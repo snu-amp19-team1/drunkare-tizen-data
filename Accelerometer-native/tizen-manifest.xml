@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns="http://tizen.org/ns/packages" api-version="5.0" package="org.example.accelerometer" version="1.0.0">
-	<profile name="wearable" />
-	<ui-application appid="org.example.accelerometer" exec="accelerometer" type="capp" multiple="false" taskmanage="true" nodisplay="false">
-		<icon>accelerometer.png</icon>
-		<label>accelerometer</label>
-	</ui-application>
-</manifest>

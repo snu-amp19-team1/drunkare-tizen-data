@@ -1,5 +1,5 @@
-build main_build: phony accelerometer
+build main_build: phony accelerometer_4_0
 build all: phony main_build
 default all
 edje-cc-dep-options = -deps $out.d
-binaryName = accelerometer
+binaryName = accelerometer_4_0

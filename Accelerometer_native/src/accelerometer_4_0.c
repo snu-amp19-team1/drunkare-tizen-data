@@ -1,4 +1,4 @@
-#include "accelerometer.h"
+#include "accelerometer_4_0.h"
 #include <sensor.h>
 #include <app.h>
 #include "dlog.h"
@@ -43,27 +43,27 @@ static void initial_sensor(){
     bool supported = false;
     sensor_is_supported(SENSOR_ACCELEROMETER, &supported);
     if (!supported) {
-        dlog_print(DLOG_DEBUG, "sensor", "sensor is not supported" );
+        //dlog_print(DLOG_DEBUG, "sensor", "sensor is not supported" );
         return;
         /* Accelerometer is not supported on the current device */
     }
-    dlog_print(DLOG_DEBUG, "sensor","sensor is supported" );
+    //dlog_print(DLOG_DEBUG, "sensor","sensor is supported" );
 
 
     // Get the sensor handler using sensor ID
     sensor_h sensor;
     sensor_get_default_sensor(SENSOR_ACCELEROMETER, &sensor);
 
-    dlog_print(DLOG_DEBUG, "sensor","sensor handler get" );
+    //dlog_print(DLOG_DEBUG, "sensor","sensor handler get" );
 
 
     // Create listener handler using sensor handler
     sensor_create_listener(sensor, &listener);
 
 
-    // Register callback function (callback interval = 10ms)
-    // [BUG] interval doesn't work in wearable 5.0 => about 60ms
-    sensor_listener_set_event_cb(listener, 10, example_sensor_callback, NULL);
+    // Register callback function (callback interval = 25Hz, 40ms)
+    // [BUG?] Last 1~3 data interval is NOT 40ms.
+    sensor_listener_set_event_cb(listener, 40, example_sensor_callback, NULL);
 
     //sensor_destroy_listener(listener);
 }
@@ -93,6 +93,7 @@ win_back_cb(void *data, Evas_Object *obj, void *event_info)
 
 static void turn_on(appdata_s *ad) {
 	// Start Listener
+	initial_sensor();
 	sensor_listener_start(listener);
 	elm_object_text_set(ad->button, "Stop");
 	ad->state = "on";
@@ -101,6 +102,7 @@ static void turn_on(appdata_s *ad) {
 static void turn_off(appdata_s *ad) {
 	// Stop Listerner
 	sensor_listener_stop(listener);
+	sensor_destroy_listener(listener);
 	elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
 }
@@ -166,7 +168,7 @@ app_create(void *data)
 		If this function returns false, the application is terminated */
 	appdata_s *ad = data;
 	create_base_gui(ad);
-	initial_sensor(); // initialize sensor
+	//initial_sensor(); // initialize sensor
 
 	return true;
 }

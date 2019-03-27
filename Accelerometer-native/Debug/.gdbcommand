@@ -1,5 +1,0 @@
-set sysroot C:\tizen-studio\platforms\tizen-5.0\wearable\rootstraps\wearable-5.0-emulator.core
-set debug-file-directory C:\tizen-studio\platforms\tizen-5.0\wearable\rootstraps\wearable-5.0-emulator.core\usr\lib\debug
-set solib-search-path C:\Users\구연재\workspace\Accelerometer\Debug
-dir C:\tizen-studio\platforms\tizen-5.0\wearable\rootstraps\wearable-5.0-emulator.core\usr\src\debug
-sharedlibrary
