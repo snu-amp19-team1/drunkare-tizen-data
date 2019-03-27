@@ -4,6 +4,7 @@
 #include "dlog.h"
 #include <Elementary.h>
 
+sensor_listener_h listener;
 
 /* callback function */
 void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
@@ -16,13 +17,13 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
     sensor_get_type(sensor, &type);
 
     if (type == SENSOR_ACCELEROMETER) {
-        dlog_print(DLOG_DEBUG, "sensor callback", "SENSOR_ACCELEROMETER on");
+        //dlog_print(DLOG_DEBUG, "sensor callback", "SENSOR_ACCELEROMETER on");
         unsigned long long timestamp = event->timestamp;
 
         // Print timestamp
         char tmp[30];
         sprintf(tmp,"time : %lld",timestamp);
-        dlog_print(DLOG_DEBUG, "sensor callback", tmp);
+        //dlog_print(DLOG_DEBUG, "sensor callback", tmp);
 
         // ?
         int accuracy = event->accuracy;
@@ -57,17 +58,13 @@ static void initial_sensor(){
 
 
     // Create listener handler using sensor handler
-    sensor_listener_h listener;
     sensor_create_listener(sensor, &listener);
 
 
-    // Register callback function (callback interval = 100ms)
-    sensor_listener_set_event_cb(listener, 100, example_sensor_callback, NULL);
+    // Register callback function (callback interval = 10ms)
+    // [BUG] interval doesn't work in wearable 5.0 => about 60ms
+    sensor_listener_set_event_cb(listener, 10, example_sensor_callback, NULL);
 
-    // Start Listener
-    sensor_listener_start(listener);
-
-    //sensor_listener_stop(listener);
     //sensor_destroy_listener(listener);
 }
 
@@ -76,6 +73,8 @@ typedef struct appdata {
 	Evas_Object *win;
 	Evas_Object *conform;
 	Evas_Object *label;
+	Evas_Object *button;
+	char *state;
 } appdata_s;
 
 static void
@@ -90,6 +89,28 @@ win_back_cb(void *data, Evas_Object *obj, void *event_info)
 	appdata_s *ad = data;
 	/* Let window go to hide state. */
 	elm_win_lower(ad->win);
+}
+
+static void turn_on(appdata_s *ad) {
+	// Start Listener
+	sensor_listener_start(listener);
+	elm_object_text_set(ad->button, "Stop");
+	ad->state = "on";
+}
+
+static void turn_off(appdata_s *ad) {
+	// Stop Listerner
+	sensor_listener_stop(listener);
+	elm_object_text_set(ad->button, "Start");
+	ad->state = "off";
+}
+
+static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
+	appdata_s *ad = data;
+	if(strcmp(ad->state, "off")==0)
+		turn_on(ad);
+	else if(strcmp(ad->state, "on")==0)
+		turn_off(ad);
 }
 
 static void
@@ -117,9 +138,20 @@ create_base_gui(appdata_s *ad)
 
 	/* Label */
 	ad->label = elm_label_add(ad->conform);
-	elm_object_text_set(ad->label, "<align=center>ACCELEROMETER</align>");
+	elm_object_text_set(ad->label, "<align=center><br>ACCELEROMETER</br></align>");
 	evas_object_size_hint_weight_set(ad->label, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
 	elm_object_content_set(ad->conform, ad->label);
+	evas_object_move(ad->label, 130, 130);
+
+	/* Set button */
+	ad->button = elm_button_add(ad->win);
+	evas_object_smart_callback_add(ad->button, "clicked", btn_clicked_cb, ad);
+	evas_object_move(ad->button, 130, 100);
+	evas_object_resize(ad->button, 100, 60);
+	evas_object_show(ad->button);
+
+	// default state
+	turn_off(ad);
 
 	/* Show window after base gui is set up */
 	evas_object_show(ad->win);
