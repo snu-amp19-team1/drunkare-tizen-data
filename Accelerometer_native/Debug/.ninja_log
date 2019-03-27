@@ -20,3 +20,5 @@
 52	66	0	clean	d59b6dac04fa9b5d
 4	873	0	src/accelerometer_4_0.o	ad0fbd6f4dde778a
 873	2352	0	accelerometer_4_0	4d0aadf1b03f4423
+0	853	0	src/accelerometer.o	14ffd4144425ab45
+853	2240	0	accelerometer_4_0	ad8334bb0176fe10

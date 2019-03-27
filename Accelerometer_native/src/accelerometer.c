@@ -1,4 +1,4 @@
-#include "accelerometer_4_0.h"
+#include <accelerometer.h>
 #include <sensor.h>
 #include <app.h>
 #include "dlog.h"
