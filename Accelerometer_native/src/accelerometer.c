@@ -4,68 +4,64 @@
 #include "dlog.h"
 #include <Elementary.h>
 
-sensor_listener_h listener;
+#define ACCELEROMETER	0
+#define GYROSCOPE	1
+
+sensor_h default_accelerometer;
+sensor_h default_gyroscope;
+
+sensor_listener_h accel_listener;
+sensor_listener_h gyro_listener;
 
 /* callback function */
 void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
+	/*
+	 If a callback is used to listen for different sensor types,
+	 it can check the sensor type
+	 */
+	sensor_type_e type;
+	sensor_get_type(default_accelerometer, &type);
 
-    /*
-     If a callback is used to listen for different sensor types,
-     it can check the sensor type
-     */
-    sensor_type_e type;
-    sensor_get_type(sensor, &type);
+	if (type == SENSOR_ACCELEROMETER) {
+		//dlog_print(DLOG_DEBUG, "sensor callback", "SENSOR_ACCELEROMETER on");
+		unsigned long long timestamp = event->timestamp;
 
-    if (type == SENSOR_ACCELEROMETER) {
-        //dlog_print(DLOG_DEBUG, "sensor callback", "SENSOR_ACCELEROMETER on");
-        unsigned long long timestamp = event->timestamp;
+		// Print timestamp
+		char tmp[30];
+		sprintf(tmp,"time : %lld",timestamp);
+		dlog_print(DLOG_DEBUG, "sensor callback", tmp);
 
-        // Print timestamp
-        char tmp[30];
-        sprintf(tmp,"time : %lld",timestamp);
-        //dlog_print(DLOG_DEBUG, "sensor callback", tmp);
+                // Currently comment out to suppress unused variable warning
+		// int accuracy = event->accuracy;
 
-        // ?
-        int accuracy = event->accuracy;
-
-        // Print accelerometer data
-        float x = event->values[0];
-        float y = event->values[1];
-        float z = event->values[2];
-        sprintf(tmp,"%f %f %f",x,y,z);
-        dlog_print(DLOG_DEBUG, "sensor callback", tmp);
-    }
+		// Print accelerometer data
+		float x = event->values[0];
+		float y = event->values[1];
+		float z = event->values[2];
+		sprintf(tmp,"%f %f %f",x,y,z);
+		dlog_print(DLOG_DEBUG, "sensor callback", tmp);
+	}
 }
 
-static void initial_sensor(){
+static void initialize_accelerometer(){
 
-	// Check weather the SENSOR is supported (SENSOR_ACCELEROMETER)
-    bool supported = false;
-    sensor_is_supported(SENSOR_ACCELEROMETER, &supported);
-    if (!supported) {
-        //dlog_print(DLOG_DEBUG, "sensor", "sensor is not supported" );
-        return;
-        /* Accelerometer is not supported on the current device */
-    }
-    //dlog_print(DLOG_DEBUG, "sensor","sensor is supported" );
+// Check weather the SENSOR is supported (SENSOR_ACCELEROMETER)
+bool supported = false;
+	sensor_is_supported(SENSOR_ACCELEROMETER, &supported);
+	if (!supported) {
+		//dlog_print(DLOG_DEBUG, "sensor", "sensor is not supported" );
+		return;
+		/* Accelerometer is not supported on the current device */
+	}
 
+	// Create listener handler using sensor handler
+	sensor_create_listener(default_accelerometer, &accel_listener);
 
-    // Get the sensor handler using sensor ID
-    sensor_h sensor;
-    sensor_get_default_sensor(SENSOR_ACCELEROMETER, &sensor);
+	// Register callback function (callback interval = 25Hz, 40ms)
+	// BUG: Last 1~3 data interval is NOT 40ms.
+	sensor_listener_set_event_cb(accel_listener, 40, example_sensor_callback, NULL);
 
-    //dlog_print(DLOG_DEBUG, "sensor","sensor handler get" );
-
-
-    // Create listener handler using sensor handler
-    sensor_create_listener(sensor, &listener);
-
-
-    // Register callback function (callback interval = 25Hz, 40ms)
-    // [BUG?] Last 1~3 data interval is NOT 40ms.
-    sensor_listener_set_event_cb(listener, 40, example_sensor_callback, NULL);
-
-    //sensor_destroy_listener(listener);
+	// sensor_destroy_listener(accel_listener);
 }
 
 
@@ -91,18 +87,18 @@ win_back_cb(void *data, Evas_Object *obj, void *event_info)
 	elm_win_lower(ad->win);
 }
 
-static void turn_on(appdata_s *ad) {
+static void turn_on_accelerometer(appdata_s *ad) {
 	// Start Listener
-	initial_sensor();
-	sensor_listener_start(listener);
+	initialize_accelerometer();
+	sensor_listener_start(accel_listener);
 	elm_object_text_set(ad->button, "Stop");
 	ad->state = "on";
 }
 
-static void turn_off(appdata_s *ad) {
+static void turn_off_accelerometer(appdata_s *ad) {
 	// Stop Listerner
-	sensor_listener_stop(listener);
-	sensor_destroy_listener(listener);
+	sensor_listener_stop(accel_listener);
+	sensor_destroy_listener(accel_listener);
 	elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
 }
@@ -110,9 +106,9 @@ static void turn_off(appdata_s *ad) {
 static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
 	appdata_s *ad = data;
 	if(strcmp(ad->state, "off")==0)
-		turn_on(ad);
+		turn_on_accelerometer(ad);
 	else if(strcmp(ad->state, "on")==0)
-		turn_off(ad);
+		turn_off_accelerometer(ad);
 }
 
 static void
@@ -153,7 +149,7 @@ create_base_gui(appdata_s *ad)
 	evas_object_show(ad->button);
 
 	// default state
-	turn_off(ad);
+	turn_off_accelerometer(ad);
 
 	/* Show window after base gui is set up */
 	evas_object_show(ad->win);
@@ -242,6 +238,19 @@ main(int argc, char *argv[])
 
 	ui_app_lifecycle_callback_s event_callback = {0,};
 	app_event_handler_h handlers[5] = {NULL, };
+
+	bool supported[2] = { false, false };
+	sensor_is_supported(SENSOR_ACCELEROMETER, &supported[ACCELEROMETER]);
+	sensor_is_supported(SENSOR_ACCELEROMETER, &supported[GYROSCOPE]);
+	if (!supported[0] || !supported[1]) {
+		//dlog_print(DLOG_DEBUG, "sensor", "sensor is not supported" );
+		return 1;
+		/* Accelerometer is not supported on the current device */
+	}
+
+        // Initialize sensor handle
+	sensor_get_default_sensor(SENSOR_ACCELEROMETER, &default_accelerometer);
+	sensor_get_default_sensor(SENSOR_ACCELEROMETER, &default_gyroscope);
 
 	event_callback.create = app_create;
 	event_callback.terminate = app_terminate;
