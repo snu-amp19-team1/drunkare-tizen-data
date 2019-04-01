@@ -4,8 +4,11 @@
 #include "dlog.h"
 #include <Elementary.h>
 
-#define ACCELEROMETER	0
-#define GYROSCOPE	1
+#define ACCELEROMETER		0
+#define GYROSCOPE			1
+#define MILLION				1000000
+#define SAMPLING_RATE		40
+#define SAMPLES_PER_SESOND	(1000 / SAMPLING_RATE)
 
 sensor_h default_accelerometer;
 sensor_h default_gyroscope;
@@ -13,57 +16,80 @@ sensor_h default_gyroscope;
 sensor_listener_h accel_listener;
 sensor_listener_h gyro_listener;
 
-/* callback function */
+/* Common callback function */
 void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 	/*
 	 If a callback is used to listen for different sensor types,
 	 it can check the sensor type
 	 */
 	sensor_type_e type;
-	sensor_get_type(default_accelerometer, &type);
+	sensor_get_type(sensor, &type);
+	unsigned long long timestamp;
+	char buf[32];
+	float x, y, z;
 
-	if (type == SENSOR_ACCELEROMETER) {
-		//dlog_print(DLOG_DEBUG, "sensor callback", "SENSOR_ACCELEROMETER on");
-		unsigned long long timestamp = event->timestamp;
-
+	switch (type) {
+	case SENSOR_ACCELEROMETER:
+		timestamp = event->timestamp;
 		// Print timestamp
-		char tmp[30];
-		sprintf(tmp,"time : %lld",timestamp);
-		dlog_print(DLOG_DEBUG, "sensor callback", tmp);
+		sprintf(buf,"[ACCEL] time : %lld",timestamp);
+		dlog_print(DLOG_DEBUG, "accel callback", buf);
 
-                // Currently comment out to suppress unused variable warning
+		// Currently comment out to suppress unused variable warning
 		// int accuracy = event->accuracy;
 
 		// Print accelerometer data
-		float x = event->values[0];
-		float y = event->values[1];
-		float z = event->values[2];
-		sprintf(tmp,"%f %f %f",x,y,z);
-		dlog_print(DLOG_DEBUG, "sensor callback", tmp);
+		x = event->values[0];
+		y = event->values[1];
+		z = event->values[2];
+		sprintf(buf,"%f %f %f",x,y,z);
+		dlog_print(DLOG_DEBUG, "accel callback", buf);
+		break;
+	case SENSOR_GYROSCOPE:
+		//dlog_print(DLOG_DEBUG, "sensor callback", "SENSOR_ACCELEROMETER on");
+		timestamp = event->timestamp;
+
+		// Print timestamp
+		sprintf(buf,"[GYRO] time : %lld",timestamp);
+		dlog_print(DLOG_DEBUG, "gyro callback", buf);
+
+		// Currently comment out to suppress unused variable warning
+		// int accuracy = event->accuracy;
+
+		// Print accelerometer data
+		x = event->values[0];
+		y = event->values[1];
+		z = event->values[2];
+		sprintf(buf,"%f %f %f",x,y,z);
+		dlog_print(DLOG_DEBUG, "gyro callback", buf);
+		break;
+	default:
+		/* Do nothing */
+		break;
 	}
 }
 
 static void initialize_accelerometer(){
-
-// Check weather the SENSOR is supported (SENSOR_ACCELEROMETER)
-bool supported = false;
-	sensor_is_supported(SENSOR_ACCELEROMETER, &supported);
-	if (!supported) {
-		//dlog_print(DLOG_DEBUG, "sensor", "sensor is not supported" );
-		return;
-		/* Accelerometer is not supported on the current device */
-	}
-
 	// Create listener handler using sensor handler
 	sensor_create_listener(default_accelerometer, &accel_listener);
 
-	// Register callback function (callback interval = 25Hz, 40ms)
-	// BUG: Last 1~3 data interval is NOT 40ms.
-	sensor_listener_set_event_cb(accel_listener, 40, example_sensor_callback, NULL);
-
-	// sensor_destroy_listener(accel_listener);
+	// Register callback function
+	// BUG: Time intervals of the last 1~3 measurements are inaccurate
+	sensor_listener_set_event_cb(accel_listener,
+                                     SAMPLING_RATE,
+                                     example_sensor_callback, NULL);
 }
 
+static void initialize_gyroscope(){
+	// Create listener handler using sensor handler
+	sensor_create_listener(default_gyroscope, &gyro_listener);
+
+	// Register callback function
+	// BUG: Time intervals of the last 1~3 measurements are inaccurate
+	sensor_listener_set_event_cb(gyro_listener,
+                                     SAMPLING_RATE,
+                                     example_sensor_callback, NULL);
+}
 
 typedef struct appdata {
 	Evas_Object *win;
@@ -103,12 +129,31 @@ static void turn_off_accelerometer(appdata_s *ad) {
 	ad->state = "off";
 }
 
+static void turn_on_gyroscope(appdata_s *ad) {
+	// Start Listener
+	initialize_gyroscope();
+	sensor_listener_start(gyro_listener);
+	elm_object_text_set(ad->button, "Stop");
+	ad->state = "on";
+}
+
+static void turn_off_gyroscope(appdata_s *ad) {
+	// Stop Listerner
+	sensor_listener_stop(gyro_listener);
+	sensor_destroy_listener(gyro_listener);
+	elm_object_text_set(ad->button, "Start");
+	ad->state = "off";
+}
+
 static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
 	appdata_s *ad = data;
-	if(strcmp(ad->state, "off")==0)
+	if(strcmp(ad->state, "off") == 0) {
 		turn_on_accelerometer(ad);
-	else if(strcmp(ad->state, "on")==0)
+		turn_on_gyroscope(ad);
+	} else if (strcmp(ad->state, "on") == 0) {
 		turn_off_accelerometer(ad);
+		turn_off_gyroscope(ad);
+	}
 }
 
 static void
