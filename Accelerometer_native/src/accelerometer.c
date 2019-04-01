@@ -241,7 +241,7 @@ main(int argc, char *argv[])
 
 	bool supported[2] = { false, false };
 	sensor_is_supported(SENSOR_ACCELEROMETER, &supported[ACCELEROMETER]);
-	sensor_is_supported(SENSOR_ACCELEROMETER, &supported[GYROSCOPE]);
+	sensor_is_supported(SENSOR_GYROSCOPE, &supported[GYROSCOPE]);
 	if (!supported[0] || !supported[1]) {
 		//dlog_print(DLOG_DEBUG, "sensor", "sensor is not supported" );
 		return 1;
@@ -250,7 +250,7 @@ main(int argc, char *argv[])
 
         // Initialize sensor handle
 	sensor_get_default_sensor(SENSOR_ACCELEROMETER, &default_accelerometer);
-	sensor_get_default_sensor(SENSOR_ACCELEROMETER, &default_gyroscope);
+	sensor_get_default_sensor(SENSOR_GYROSCOPE, &default_gyroscope);
 
 	event_callback.create = app_create;
 	event_callback.terminate = app_terminate;
