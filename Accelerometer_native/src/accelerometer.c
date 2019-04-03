@@ -35,8 +35,8 @@ typedef struct appdata {
 	Evas_Object *label;
 	Evas_Object *button;
 	char *state;
-	sensordata_s sensor_data[NUM_OF_SENSOR][SAMPLES_PER_SESOND*60]; // to save data per minute
-	int iterator[NUM_OF_SENSOR]; // to save data per minute
+	sensordata_s sensor_data[NUM_OF_SENSOR][SAMPLES_PER_SESOND]; // to save data per second
+	int iterator[NUM_OF_SENSOR]; // to save data per second
 } appdata_s;
 
 
@@ -65,17 +65,6 @@ static void write_file(const char* filename, const char* buf)
     FILE *fp;
     fp = fopen(concat(filepath, filename), "w");
     fputs(buf,fp);
-    fclose(fp);
-}
-
-/* read file in data path */
-static void read_file(const char* filename)
-{
-    FILE *fp;
-    char buf[255];
-    fp = fopen(concat(filepath, filename), "r");
-    fscanf(fp, "%s", buf);
-    printf("1 : %s\n", buf );
     fclose(fp);
 }
 
@@ -119,8 +108,8 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		data.x = x;
 		data.y = y;
 		data.z = z;
-		if (ad->iterator[ACCELEROMETER] == SAMPLES_PER_SESOND*60){
-			// after 1 min, reset iterator
+		if (ad->iterator[ACCELEROMETER] == SAMPLES_PER_SESOND){
+			// after 1 sec, reset iterator
 			ad->iterator[ACCELEROMETER] = 0;
 		}
 
@@ -157,8 +146,8 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		data.x = x;
 		data.y = y;
 		data.z = z;
-		if (ad->iterator[GYROSCOPE] == SAMPLES_PER_SESOND*60){
-			// after 1 min, reset iterator
+		if (ad->iterator[GYROSCOPE] == SAMPLES_PER_SESOND){
+			// after 1 sec, reset iterator
 			ad->iterator[GYROSCOPE] = 0;
 		}
 
