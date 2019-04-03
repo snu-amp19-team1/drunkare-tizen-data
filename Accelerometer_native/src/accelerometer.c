@@ -50,7 +50,7 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 	 it can check the sensor type
 	 */
 
-	appdata_s *ap = (appdata_s*)user_data;
+	appdata_s *ad = (appdata_s*)user_data;
 	struct sensordata *data;
 	sensor_type_e type;
 	sensor_get_type(sensor, &type);
@@ -76,14 +76,14 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		dlog_print(DLOG_DEBUG, "accel callback", buf);
 
 		// record to array
-		data = ap->sensor_data[ACCELEROMETER][ap->iterator[ACCELEROMETER]++];
+		data = ad->sensor_data[ACCELEROMETER][ad->iterator[ACCELEROMETER]++];
 		data->sensortype = ACCELEROMETER;
 		data->timestamp = timestamp;
 		data->x = x;
 		data->y = y;
 		data->z = z;
-		if (ap->iterator[ACCELEROMETER] == SAMPLES_PER_SESOND){
-			ap->iterator[ACCELEROMETER] = 0;
+		if (ad->iterator[ACCELEROMETER] == SAMPLES_PER_SESOND){
+			ad->iterator[ACCELEROMETER] = 0;
 		}
 
 		// test print
@@ -109,14 +109,14 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		dlog_print(DLOG_DEBUG, "gyro callback", buf);
 
 		// record to array
-		data = ap->sensor_data[GYROSCOPE][ap->iterator[GYROSCOPE]++];
+		data = ad->sensor_data[GYROSCOPE][ad->iterator[GYROSCOPE]++];
 		data->sensortype = GYROSCOPE;
 		data->timestamp = timestamp;
 		data->x = x;
 		data->y = y;
 		data->z = z;
-		if (ap->iterator[GYROSCOPE] == SAMPLES_PER_SESOND){
-			ap->iterator[GYROSCOPE] = 0;
+		if (ad->iterator[GYROSCOPE] == SAMPLES_PER_SESOND){
+			ad->iterator[GYROSCOPE] = 0;
 		}
 
 		// test print
@@ -186,6 +186,7 @@ static void turn_off_accelerometer(appdata_s *ad) {
 	sensor_destroy_listener(accel_listener);
 	elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
+
 /*
 	// free sensor data array
 	for (int i = 0; i < SAMPLES_PER_SESOND; i++) {
