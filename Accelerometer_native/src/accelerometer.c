@@ -17,6 +17,8 @@ sensor_h default_gyroscope;
 sensor_listener_h accel_listener;
 sensor_listener_h gyro_listener;
 
+char* filepath;
+
 
 /* struct for sensor data */
 typedef struct sensordata {
@@ -45,6 +47,36 @@ void dlog_print_sensor_data(struct sensordata data) {
 	dlog_print(DLOG_DEBUG, "sensor_data", buf);
 	sprintf(buf,"x : %f y : %f z : %f", data.x, data.y, data.z);
 	dlog_print(DLOG_DEBUG, "sensor_data", buf);
+}
+
+/* string concatenate */
+char* concat(const char *s1, const char *s2)
+{
+    char *result = malloc(strlen(s1) + strlen(s2) + 1); // +1 for the null-terminator
+    // in real code you would check for errors in malloc here
+    strcpy(result, s1);
+    strcat(result, s2);
+    return result;
+}
+
+/* write file in data path */
+static void write_file(const char* filename, const char* buf)
+{
+    FILE *fp;
+    fp = fopen(concat(filepath, filename), "w");
+    fputs(buf,fp);
+    fclose(fp);
+}
+
+/* read file in data path */
+static void read_file(const char* filename)
+{
+    FILE *fp;
+    char buf[255];
+    fp = fopen(concat(filepath, filename), "r");
+    fscanf(fp, "%s", buf);
+    printf("1 : %s\n", buf );
+    fclose(fp);
 }
 
 /* Common callback function. user_data = app_data */
@@ -95,6 +127,10 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		// test print
 		dlog_print_sensor_data(data);
 
+		// save file
+		const char* data_buf = "test accel";
+		write_file("data.txt", data_buf);
+
 		break;
 
 	case SENSOR_GYROSCOPE:
@@ -128,6 +164,10 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 
 		// test print
 		dlog_print_sensor_data(data);
+
+		// save file
+		data_buf = "test gyro";
+		write_file("data.txt", data_buf);
 
 		break;
 
@@ -271,7 +311,7 @@ app_create(void *data)
 		If this function returns false, the application is terminated */
 	appdata_s *ad = data;
 	create_base_gui(ad);
-	//initial_sensor(); // initialize sensor
+	filepath = app_get_data_path();
 
 	return true;
 }
