@@ -187,15 +187,17 @@ static void turn_off_accelerometer(appdata_s *ad) {
 	elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
 
-/*
+
 	// free sensor data array
+	/*
 	for (int i = 0; i < SAMPLES_PER_SESOND; i++) {
 		if (ad->sensor_data[ACCELEROMETER][i] != NULL) {
 			free(ad->sensor_data[ACCELEROMETER][i]);
 		}
 	}
+	*/
 	free(ad->sensor_data[ACCELEROMETER]);
-*/
+
 }
 
 static void turn_on_gyroscope(appdata_s *ad) {
@@ -226,8 +228,8 @@ static void turn_off_gyroscope(appdata_s *ad) {
 			free(ad->sensor_data[GYROSCOPE][i]);
 		}
 	}
-	free(ad->sensor_data[GYROSCOPE]);
 */
+	free(ad->sensor_data[GYROSCOPE]);
 }
 
 static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
