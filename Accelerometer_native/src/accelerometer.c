@@ -134,7 +134,7 @@ static void turn_on_accelerometer(appdata_s *ad) {
 }
 
 static void turn_off_accelerometer(appdata_s *ad) {
-	// Stop Listerner
+	// Stop Listener
 	sensor_listener_stop(accel_listener);
 	sensor_destroy_listener(accel_listener);
 	elm_object_text_set(ad->button, "Start");
@@ -156,7 +156,7 @@ static void turn_on_gyroscope(appdata_s *ad) {
 }
 
 static void turn_off_gyroscope(appdata_s *ad) {
-	// Stop Listerner
+	// Stop Listener
 	sensor_listener_stop(gyro_listener);
 	sensor_destroy_listener(gyro_listener);
 	elm_object_text_set(ad->button, "Start");
