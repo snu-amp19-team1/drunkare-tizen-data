@@ -18,28 +18,32 @@ sensor_listener_h accel_listener;
 sensor_listener_h gyro_listener;
 
 
+/* struct for sensor data */
 typedef struct sensordata {
-	int sensortype;
-	unsigned long long timestamp;
-	float x, y, z;
+	int sensortype;					/* 0 : ACCELEROMETER , 1 : GYROSCOPE */
+	int classification;				/* (not decided) */
+	unsigned long long timestamp;	/* timestamp */
+	float x, y, z;					/* data */
 } sensordata_s;
 
+/* appdata */
 typedef struct appdata {
 	Evas_Object *win;
 	Evas_Object *conform;
 	Evas_Object *label;
 	Evas_Object *button;
 	char *state;
-	sensordata_s **sensor_data[NUM_OF_SENSOR];
-	int iterator[NUM_OF_SENSOR];
+	sensordata_s sensor_data[NUM_OF_SENSOR][SAMPLES_PER_SESOND*60]; // to save data per minute
+	int iterator[NUM_OF_SENSOR]; // to save data per minute
 } appdata_s;
 
 
-void dlog_print_sensor_data(struct sensordata* data) {
+/* print sensor data struct */
+void dlog_print_sensor_data(struct sensordata data) {
 	char buf[32];
-	sprintf(buf,"type : %d timestamp : %lld", data->sensortype, data->timestamp);
+	sprintf(buf,"type : %d timestamp : %lld", data.sensortype, data.timestamp);
 	dlog_print(DLOG_DEBUG, "sensor_data", buf);
-	sprintf(buf,"x : %f y : %f z : %f",data->x, data->y, data->z);
+	sprintf(buf,"x : %f y : %f z : %f", data.x, data.y, data.z);
 	dlog_print(DLOG_DEBUG, "sensor_data", buf);
 }
 
@@ -51,7 +55,7 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 	 */
 
 	appdata_s *ad = (appdata_s*)user_data;
-	struct sensordata *data;
+	struct sensordata data;
 	sensor_type_e type;
 	sensor_get_type(sensor, &type);
 	unsigned long long timestamp;
@@ -61,6 +65,7 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 	switch (type) {
 	case SENSOR_ACCELEROMETER:
 		timestamp = event->timestamp;
+
 		// Print timestamp
 		sprintf(buf,"[ACCEL] time : %lld",timestamp);
 		dlog_print(DLOG_DEBUG, "accel callback", buf);
@@ -77,12 +82,13 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 
 		// record to array
 		data = ad->sensor_data[ACCELEROMETER][ad->iterator[ACCELEROMETER]++];
-		data->sensortype = ACCELEROMETER;
-		data->timestamp = timestamp;
-		data->x = x;
-		data->y = y;
-		data->z = z;
-		if (ad->iterator[ACCELEROMETER] == SAMPLES_PER_SESOND){
+		data.sensortype = ACCELEROMETER;
+		data.timestamp = timestamp;
+		data.x = x;
+		data.y = y;
+		data.z = z;
+		if (ad->iterator[ACCELEROMETER] == SAMPLES_PER_SESOND*60){
+			// after 1 min, reset iterator
 			ad->iterator[ACCELEROMETER] = 0;
 		}
 
@@ -90,8 +96,8 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		dlog_print_sensor_data(data);
 
 		break;
+
 	case SENSOR_GYROSCOPE:
-		//dlog_print(DLOG_DEBUG, "sensor callback", "SENSOR_ACCELEROMETER on");
 		timestamp = event->timestamp;
 
 		// Print timestamp
@@ -101,7 +107,7 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		// Currently comment out to suppress unused variable warning
 		// int accuracy = event->accuracy;
 
-		// Print accelerometer data
+		// Print gyroscope data
 		x = event->values[0];
 		y = event->values[1];
 		z = event->values[2];
@@ -110,12 +116,13 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 
 		// record to array
 		data = ad->sensor_data[GYROSCOPE][ad->iterator[GYROSCOPE]++];
-		data->sensortype = GYROSCOPE;
-		data->timestamp = timestamp;
-		data->x = x;
-		data->y = y;
-		data->z = z;
-		if (ad->iterator[GYROSCOPE] == SAMPLES_PER_SESOND){
+		data.sensortype = GYROSCOPE;
+		data.timestamp = timestamp;
+		data.x = x;
+		data.y = y;
+		data.z = z;
+		if (ad->iterator[GYROSCOPE] == SAMPLES_PER_SESOND*60){
+			// after 1 min, reset iterator
 			ad->iterator[GYROSCOPE] = 0;
 		}
 
@@ -123,6 +130,7 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		dlog_print_sensor_data(data);
 
 		break;
+
 	default:
 		/* Do nothing */
 		break;
@@ -171,13 +179,7 @@ static void turn_on_accelerometer(appdata_s *ad) {
 	sensor_listener_start(accel_listener);
 	elm_object_text_set(ad->button, "Stop");
 	ad->state = "on";
-
-	// create sensor data array
-	ad->sensor_data[ACCELEROMETER] = malloc(sizeof(sensordata_s)*SAMPLES_PER_SESOND);
-	for (int i = 0; i < SAMPLES_PER_SESOND; i++) {
-		ad->sensor_data[ACCELEROMETER][i] = (sensordata_s*)malloc(sizeof(sensordata_s));
-	}
-	ad->iterator[ACCELEROMETER] = 0;
+	ad->iterator[GYROSCOPE] = 0;
 }
 
 static void turn_off_accelerometer(appdata_s *ad) {
@@ -186,18 +188,6 @@ static void turn_off_accelerometer(appdata_s *ad) {
 	sensor_destroy_listener(accel_listener);
 	elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
-
-
-	// free sensor data array
-	/*
-	for (int i = 0; i < SAMPLES_PER_SESOND; i++) {
-		if (ad->sensor_data[ACCELEROMETER][i] != NULL) {
-			free(ad->sensor_data[ACCELEROMETER][i]);
-		}
-	}
-	*/
-	free(ad->sensor_data[ACCELEROMETER]);
-
 }
 
 static void turn_on_gyroscope(appdata_s *ad) {
@@ -206,12 +196,6 @@ static void turn_on_gyroscope(appdata_s *ad) {
 	sensor_listener_start(gyro_listener);
 	elm_object_text_set(ad->button, "Stop");
 	ad->state = "on";
-
-	// create sensor data array
-	ad->sensor_data[GYROSCOPE] = malloc(sizeof(sensordata_s)*SAMPLES_PER_SESOND);
-	for (int i = 0; i < SAMPLES_PER_SESOND; i++) {
-		ad->sensor_data[GYROSCOPE][i] = (sensordata_s*)malloc(sizeof(sensordata_s));
-	}
 	ad->iterator[GYROSCOPE] = 0;
 }
 
@@ -221,15 +205,6 @@ static void turn_off_gyroscope(appdata_s *ad) {
 	sensor_destroy_listener(gyro_listener);
 	elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
-/*
-	// free sensor data array
-	for (int i = 0; i < SAMPLES_PER_SESOND; i++) {
-		if (ad->sensor_data[GYROSCOPE][i] != NULL) {
-			free(ad->sensor_data[GYROSCOPE][i]);
-		}
-	}
-*/
-	free(ad->sensor_data[GYROSCOPE]);
 }
 
 static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
