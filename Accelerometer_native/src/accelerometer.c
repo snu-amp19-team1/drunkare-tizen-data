@@ -4,6 +4,7 @@
 #include "dlog.h"
 #include <Elementary.h>
 
+#define NUM_OF_SENSOR		2
 #define ACCELEROMETER		0
 #define GYROSCOPE			1
 #define MILLION				1000000
@@ -15,6 +16,22 @@ sensor_h default_gyroscope;
 
 sensor_listener_h accel_listener;
 sensor_listener_h gyro_listener;
+
+
+typedef struct sensordata {
+	unsigned long long timestamp;
+	float x, y, z;
+} sensordata_s;
+
+typedef struct appdata {
+	Evas_Object *win;
+	Evas_Object *conform;
+	Evas_Object *label;
+	Evas_Object *button;
+	char *state;
+	sensordata_s *sensor_data[NUM_OF_SENSOR];
+} appdata_s;
+
 
 /* Common callback function */
 void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
@@ -69,7 +86,7 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 	}
 }
 
-static void initialize_accelerometer(){
+static void initialize_accelerometer(appdata_s *ad){
 	// Create listener handler using sensor handler
 	sensor_create_listener(default_accelerometer, &accel_listener);
 
@@ -80,7 +97,7 @@ static void initialize_accelerometer(){
                                      example_sensor_callback, NULL);
 }
 
-static void initialize_gyroscope(){
+static void initialize_gyroscope(appdata_s *ad){
 	// Create listener handler using sensor handler
 	sensor_create_listener(default_gyroscope, &gyro_listener);
 
@@ -90,14 +107,6 @@ static void initialize_gyroscope(){
                                      SAMPLING_RATE,
                                      example_sensor_callback, NULL);
 }
-
-typedef struct appdata {
-	Evas_Object *win;
-	Evas_Object *conform;
-	Evas_Object *label;
-	Evas_Object *button;
-	char *state;
-} appdata_s;
 
 static void
 win_delete_request_cb(void *data, Evas_Object *obj, void *event_info)
@@ -115,10 +124,13 @@ win_back_cb(void *data, Evas_Object *obj, void *event_info)
 
 static void turn_on_accelerometer(appdata_s *ad) {
 	// Start Listener
-	initialize_accelerometer();
+	initialize_accelerometer(ad);
 	sensor_listener_start(accel_listener);
 	elm_object_text_set(ad->button, "Stop");
 	ad->state = "on";
+
+	// create sensor data array
+	ad->sensor_data[ACCELEROMETER] = malloc(sizeof(sensordata_s)*SAMPLES_PER_SESOND);
 }
 
 static void turn_off_accelerometer(appdata_s *ad) {
@@ -127,14 +139,20 @@ static void turn_off_accelerometer(appdata_s *ad) {
 	sensor_destroy_listener(accel_listener);
 	elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
+
+	// free sensor data array
+	free(ad->sensor_data[ACCELEROMETER]);
 }
 
 static void turn_on_gyroscope(appdata_s *ad) {
 	// Start Listener
-	initialize_gyroscope();
+	initialize_gyroscope(ad);
 	sensor_listener_start(gyro_listener);
 	elm_object_text_set(ad->button, "Stop");
 	ad->state = "on";
+
+	// create sensor data array
+	ad->sensor_data[GYROSCOPE] = malloc(sizeof(sensordata_s)*SAMPLES_PER_SESOND);
 }
 
 static void turn_off_gyroscope(appdata_s *ad) {
@@ -143,6 +161,9 @@ static void turn_off_gyroscope(appdata_s *ad) {
 	sensor_destroy_listener(gyro_listener);
 	elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
+
+	// free sensor data array
+	free(ad->sensor_data[GYROSCOPE]);
 }
 
 static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
@@ -293,7 +314,7 @@ main(int argc, char *argv[])
 		/* Accelerometer is not supported on the current device */
 	}
 
-        // Initialize sensor handle
+    // Initialize sensor handle
 	sensor_get_default_sensor(SENSOR_ACCELEROMETER, &default_accelerometer);
 	sensor_get_default_sensor(SENSOR_GYROSCOPE, &default_gyroscope);
 
