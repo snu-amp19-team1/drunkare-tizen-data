@@ -13,13 +13,7 @@
 #define DATA_WRITE_TIME		10 // sec
 
 sensor_h sensors[NUM_OF_SENSOR];
-//sensor_h default_accelerometer;
-//sensor_h default_gyroscope;
-
 sensor_listener_h listeners[NUM_OF_SENSOR];
-//sensor_listener_h accel_listener;
-//sensor_listener_h gyro_listener;
-
 const char *filepath; // "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/data/"
 
 /* struct for sensor data */
@@ -159,29 +153,7 @@ static void initialize_sensor(appdata_s *ad, int sensor_index) {
 	                             SAMPLING_RATE,
 	                             sensor_callback, ad);
 }
-/*
-static void initialize_accelerometer(appdata_s *ad){
-	// Create listener handler using sensor handler
-	sensor_create_listener(default_accelerometer, &accel_listener);
 
-	// Register callback function
-	// BUG: Time intervals of the last 1~3 measurements are inaccurate
-	sensor_listener_set_event_cb(accel_listener,
-                                     SAMPLING_RATE,
-                                     sensor_callback, ad);
-}
-
-static void initialize_gyroscope(appdata_s *ad){
-	// Create listener handler using sensor handler
-	sensor_create_listener(default_gyroscope, &gyro_listener);
-
-	// Register callback function
-	// BUG: Time intervals of the last 1~3 measurements are inaccurate
-	sensor_listener_set_event_cb(gyro_listener,
-                                     SAMPLING_RATE,
-                                     sensor_callback, ad);
-}
-*/
 static void
 win_delete_request_cb(void *data, Evas_Object *obj, void *event_info)
 {
