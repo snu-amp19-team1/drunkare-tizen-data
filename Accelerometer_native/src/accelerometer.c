@@ -4,100 +4,177 @@
 #include "dlog.h"
 #include <Elementary.h>
 
+#define NUM_OF_SENSOR		2
 #define ACCELEROMETER		0
 #define GYROSCOPE			1
 #define MILLION				1000000
 #define SAMPLING_RATE		40
 #define SAMPLES_PER_SESOND	(1000 / SAMPLING_RATE)
+#define DATA_WRITE_TIME		10 // sec
 
-sensor_h default_accelerometer;
-sensor_h default_gyroscope;
+sensor_h sensors[NUM_OF_SENSOR];
+sensor_listener_h listeners[NUM_OF_SENSOR];
+const char *filepath;	// "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/data/"
 
-sensor_listener_h accel_listener;
-sensor_listener_h gyro_listener;
+/* struct for sensor data */
+typedef struct sensordata {
+	int index;						/* index of sensor_data array */
+	int sensortype;					/* 0 : ACCELEROMETER , 1 : GYROSCOPE */
+	int classification;				/* (not decided) */
+	unsigned long long timestamp;	/* timestamp */
+	float x, y, z;					/* data */
+} sensordata_s;
 
-/* Common callback function */
-void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
-	/*
-	 If a callback is used to listen for different sensor types,
-	 it can check the sensor type
-	 */
-	sensor_type_e type;
-	sensor_get_type(sensor, &type);
-	unsigned long long timestamp;
-	char buf[32];
-	float x, y, z;
-
-	switch (type) {
-	case SENSOR_ACCELEROMETER:
-		timestamp = event->timestamp;
-		// Print timestamp
-		sprintf(buf,"[ACCEL] time : %lld",timestamp);
-		dlog_print(DLOG_DEBUG, "accel callback", buf);
-
-		// Currently comment out to suppress unused variable warning
-		// int accuracy = event->accuracy;
-
-		// Print accelerometer data
-		x = event->values[0];
-		y = event->values[1];
-		z = event->values[2];
-		sprintf(buf,"%f %f %f",x,y,z);
-		dlog_print(DLOG_DEBUG, "accel callback", buf);
-		break;
-	case SENSOR_GYROSCOPE:
-		//dlog_print(DLOG_DEBUG, "sensor callback", "SENSOR_ACCELEROMETER on");
-		timestamp = event->timestamp;
-
-		// Print timestamp
-		sprintf(buf,"[GYRO] time : %lld",timestamp);
-		dlog_print(DLOG_DEBUG, "gyro callback", buf);
-
-		// Currently comment out to suppress unused variable warning
-		// int accuracy = event->accuracy;
-
-		// Print accelerometer data
-		x = event->values[0];
-		y = event->values[1];
-		z = event->values[2];
-		sprintf(buf,"%f %f %f",x,y,z);
-		dlog_print(DLOG_DEBUG, "gyro callback", buf);
-		break;
-	default:
-		/* Do nothing */
-		break;
-	}
-}
-
-static void initialize_accelerometer(){
-	// Create listener handler using sensor handler
-	sensor_create_listener(default_accelerometer, &accel_listener);
-
-	// Register callback function
-	// BUG: Time intervals of the last 1~3 measurements are inaccurate
-	sensor_listener_set_event_cb(accel_listener,
-                                     SAMPLING_RATE,
-                                     example_sensor_callback, NULL);
-}
-
-static void initialize_gyroscope(){
-	// Create listener handler using sensor handler
-	sensor_create_listener(default_gyroscope, &gyro_listener);
-
-	// Register callback function
-	// BUG: Time intervals of the last 1~3 measurements are inaccurate
-	sensor_listener_set_event_cb(gyro_listener,
-                                     SAMPLING_RATE,
-                                     example_sensor_callback, NULL);
-}
-
+/* appdata */
 typedef struct appdata {
 	Evas_Object *win;
 	Evas_Object *conform;
 	Evas_Object *label;
 	Evas_Object *button;
 	char *state;
+	sensordata_s sensor_data[NUM_OF_SENSOR][SAMPLES_PER_SESOND*DATA_WRITE_TIME]; // to save data per second
+	int iterator[NUM_OF_SENSOR]; // to save data per second
 } appdata_s;
+
+
+
+/* print sensordata struct */
+void dlog_print_sensor_data(sensordata_s data) {
+	char buf[64];
+	sprintf(buf,"type : %d timestamp : %lld index : #%d", data.sensortype, data.timestamp, data.index);
+	dlog_print(DLOG_DEBUG, "data_array", buf);
+	sprintf(buf,"x : %f y : %f z : %f", data.x, data.y, data.z);
+	dlog_print(DLOG_DEBUG, "data_array", buf);
+}
+
+/* string concatenate */
+char* concat(const char *s1, const char *s2)
+{
+    char *result = malloc(strlen(s1) + strlen(s2) + 1); // +1 for the null-terminator
+    // in real code you would check for errors in malloc here
+    strcpy(result, s1);
+    strcat(result, s2);
+    return result;
+}
+
+/* write file in data path */
+static void write_file(const char* filename, const char* buf)
+{
+    FILE *fp;
+    fp = fopen(concat(filepath, filename), "w");
+    fputs(buf,fp);
+    fclose(fp);
+}
+
+/* read file in data path */
+static void read_file(const char* filename)
+{
+    FILE *fp;
+    char buf[255];
+    fp = fopen(concat(filepath, filename), "r");
+    fscanf(fp, "%s", buf);
+    dlog_print(DLOG_DEBUG, "file_read", buf);
+    fclose(fp);
+}
+
+
+
+/* Common callback function */
+void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
+	/*
+	 If a callback is used to listen for different sensor types,
+	 it can check the sensor type
+	 */
+
+	appdata_s *ad = user_data;
+	sensordata_s *data;
+	sensor_type_e type;
+	sensor_get_type(sensor, &type);
+	unsigned long long timestamp;
+	char buf[64];
+	float x, y, z;
+	int sensor_index = 0;
+
+	switch (type) {
+		case SENSOR_ACCELEROMETER:
+			sensor_index = ACCELEROMETER;
+			break;
+		case SENSOR_GYROSCOPE:
+			sensor_index = GYROSCOPE;
+			break;
+		default:
+			break;
+	}
+
+	// Print timestamp
+	timestamp = event->timestamp;
+	sprintf(buf,"[type : %d] time : %lld", sensor_index, timestamp);
+	dlog_print(DLOG_DEBUG, "sensor_callback", buf);
+
+	// Print data
+	x = event->values[0];
+	y = event->values[1];
+	z = event->values[2];
+	sprintf(buf,"[type : %d] %f %f %f",sensor_index, x, y, z);
+	dlog_print(DLOG_DEBUG, "sensor_callback", buf);
+
+	// record to array
+	data = &(ad->sensor_data[sensor_index][ad->iterator[sensor_index]++]);
+	data->index = ad->iterator[sensor_index];
+	data->sensortype = sensor_index;
+	data->timestamp = timestamp;
+	data->x = x;
+	data->y = y;
+	data->z = z;
+
+	// test print
+	dlog_print_sensor_data(*data);
+
+	// reset iterator
+	if (ad->iterator[sensor_index] == SAMPLES_PER_SESOND*DATA_WRITE_TIME){
+		ad->iterator[sensor_index] = 0;
+		sprintf(buf,"[type : %d] timestamp 1sec : %lld", sensor_index , ad->sensor_data[sensor_index][SAMPLES_PER_SESOND*DATA_WRITE_TIME-1].timestamp - ad->sensor_data[sensor_index][0].timestamp);
+		dlog_print(DLOG_DEBUG, "sensor_timestamp", buf);
+	}
+
+	// save file
+	const char* data_buf = "test";
+	write_file("data.txt", data_buf);
+
+	// read file for test
+	// => file write works well, but can't see the file in device manager.... why???
+	read_file("data.txt");
+}
+
+static void initialize_sensor(appdata_s *ad, int sensor_index) {
+	// Create listener handler using sensor handler
+	sensor_create_listener(sensors[sensor_index], &listeners[sensor_index]);
+
+	// Register callback function
+	// BUG: Time intervals of the last 1~3 measurements are inaccurate
+	sensor_listener_set_event_cb(listeners[sensor_index],
+	                             SAMPLING_RATE,
+	                             sensor_callback, ad);
+}
+
+static void turn_on_sensor(appdata_s *ad, int sensor_index) {
+	// Start Listener
+	initialize_sensor(ad, sensor_index);
+	sensor_listener_start(listeners[sensor_index]);
+	elm_object_text_set(ad->button, "Stop");
+	ad->state = "on";
+	ad->iterator[sensor_index] = 0;
+}
+
+static void turn_off_sensor(appdata_s *ad, int sensor_index) {
+	// Stop Listener
+	sensor_listener_stop(listeners[sensor_index]);
+	sensor_destroy_listener(listeners[sensor_index]);
+	elm_object_text_set(ad->button, "Start");
+	ad->state = "off";
+}
+
+
 
 static void
 win_delete_request_cb(void *data, Evas_Object *obj, void *event_info)
@@ -113,46 +190,14 @@ win_back_cb(void *data, Evas_Object *obj, void *event_info)
 	elm_win_lower(ad->win);
 }
 
-static void turn_on_accelerometer(appdata_s *ad) {
-	// Start Listener
-	initialize_accelerometer();
-	sensor_listener_start(accel_listener);
-	elm_object_text_set(ad->button, "Stop");
-	ad->state = "on";
-}
-
-static void turn_off_accelerometer(appdata_s *ad) {
-	// Stop Listerner
-	sensor_listener_stop(accel_listener);
-	sensor_destroy_listener(accel_listener);
-	elm_object_text_set(ad->button, "Start");
-	ad->state = "off";
-}
-
-static void turn_on_gyroscope(appdata_s *ad) {
-	// Start Listener
-	initialize_gyroscope();
-	sensor_listener_start(gyro_listener);
-	elm_object_text_set(ad->button, "Stop");
-	ad->state = "on";
-}
-
-static void turn_off_gyroscope(appdata_s *ad) {
-	// Stop Listerner
-	sensor_listener_stop(gyro_listener);
-	sensor_destroy_listener(gyro_listener);
-	elm_object_text_set(ad->button, "Start");
-	ad->state = "off";
-}
-
 static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
 	appdata_s *ad = data;
 	if(strcmp(ad->state, "off") == 0) {
-		turn_on_accelerometer(ad);
-		turn_on_gyroscope(ad);
+		turn_on_sensor(ad, ACCELEROMETER);
+		turn_on_sensor(ad, GYROSCOPE);
 	} else if (strcmp(ad->state, "on") == 0) {
-		turn_off_accelerometer(ad);
-		turn_off_gyroscope(ad);
+		turn_off_sensor(ad, ACCELEROMETER);
+		turn_off_sensor(ad, GYROSCOPE);
 	}
 }
 
@@ -194,7 +239,8 @@ create_base_gui(appdata_s *ad)
 	evas_object_show(ad->button);
 
 	// default state
-	turn_off_accelerometer(ad);
+	elm_object_text_set(ad->button, "Start");
+	ad->state = "off";
 
 	/* Show window after base gui is set up */
 	evas_object_show(ad->win);
@@ -209,7 +255,7 @@ app_create(void *data)
 		If this function returns false, the application is terminated */
 	appdata_s *ad = data;
 	create_base_gui(ad);
-	//initial_sensor(); // initialize sensor
+	filepath = app_get_data_path();
 
 	return true;
 }
@@ -293,9 +339,9 @@ main(int argc, char *argv[])
 		/* Accelerometer is not supported on the current device */
 	}
 
-        // Initialize sensor handle
-	sensor_get_default_sensor(SENSOR_ACCELEROMETER, &default_accelerometer);
-	sensor_get_default_sensor(SENSOR_GYROSCOPE, &default_gyroscope);
+    // Initialize sensor handle
+	sensor_get_default_sensor(SENSOR_ACCELEROMETER, &sensors[ACCELEROMETER]);
+	sensor_get_default_sensor(SENSOR_GYROSCOPE, &sensors[GYROSCOPE]);
 
 	event_callback.create = app_create;
 	event_callback.terminate = app_terminate;
