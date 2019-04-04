@@ -14,7 +14,7 @@
 
 sensor_h sensors[NUM_OF_SENSOR];
 sensor_listener_h listeners[NUM_OF_SENSOR];
-const char *filepath; // "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/data/"
+const char *filepath;	// "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/data/"
 
 /* struct for sensor data */
 typedef struct sensordata {
@@ -37,9 +37,10 @@ typedef struct appdata {
 } appdata_s;
 
 
-/* print sensor data struct */
+
+/* print sensordata struct */
 void dlog_print_sensor_data(sensordata_s data) {
-	char buf[32];
+	char buf[64];
 	sprintf(buf,"type : %d timestamp : %lld index : #%d", data.sensortype, data.timestamp, data.index);
 	dlog_print(DLOG_DEBUG, "sensor_data", buf);
 	sprintf(buf,"x : %f y : %f z : %f", data.x, data.y, data.z);
@@ -76,7 +77,8 @@ static void read_file(const char* filename)
 }
 
 
-/* Common callback function. user_data = app_data */
+
+/* Common callback function */
 void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 	/*
 	 If a callback is used to listen for different sensor types,
@@ -154,6 +156,25 @@ static void initialize_sensor(appdata_s *ad, int sensor_index) {
 	                             sensor_callback, ad);
 }
 
+static void turn_on_sensor(appdata_s *ad, int sensor_index) {
+	// Start Listener
+	initialize_sensor(ad, sensor_index);
+	sensor_listener_start(listeners[sensor_index]);
+	elm_object_text_set(ad->button, "Stop");
+	ad->state = "on";
+	ad->iterator[sensor_index] = 0;
+}
+
+static void turn_off_sensor(appdata_s *ad, int sensor_index) {
+	// Stop Listener
+	sensor_listener_stop(listeners[sensor_index]);
+	sensor_destroy_listener(listeners[sensor_index]);
+	elm_object_text_set(ad->button, "Start");
+	ad->state = "off";
+}
+
+
+
 static void
 win_delete_request_cb(void *data, Evas_Object *obj, void *event_info)
 {
@@ -168,39 +189,14 @@ win_back_cb(void *data, Evas_Object *obj, void *event_info)
 	elm_win_lower(ad->win);
 }
 
-static void turn_on_sensor(appdata_s *ad, int sensor_index) {
-	// Start Listener
-	initialize_sensor(ad, sensor_index);
-	sensor_listener_start(listeners[sensor_index]);
-	elm_object_text_set(ad->button, "Stop");
-	ad->state = "on";
-	ad->iterator[sensor_index] = 0;
-}
-
-static void turn_off_accelerometer(appdata_s *ad) {
-	// Stop Listener
-	sensor_listener_stop(listeners[ACCELEROMETER]);
-	sensor_destroy_listener(listeners[ACCELEROMETER]);
-	elm_object_text_set(ad->button, "Start");
-	ad->state = "off";
-}
-
-static void turn_off_gyroscope(appdata_s *ad) {
-	// Stop Listener
-	sensor_listener_stop(listeners[GYROSCOPE]);
-	sensor_destroy_listener(listeners[GYROSCOPE]);
-	elm_object_text_set(ad->button, "Start");
-	ad->state = "off";
-}
-
 static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
 	appdata_s *ad = data;
 	if(strcmp(ad->state, "off") == 0) {
 		turn_on_sensor(ad, ACCELEROMETER);
 		turn_on_sensor(ad, GYROSCOPE);
 	} else if (strcmp(ad->state, "on") == 0) {
-		turn_off_accelerometer(ad);
-		turn_off_gyroscope(ad);
+		turn_off_sensor(ad, ACCELEROMETER);
+		turn_off_sensor(ad, GYROSCOPE);
 	}
 }
 
@@ -242,7 +238,8 @@ create_base_gui(appdata_s *ad)
 	evas_object_show(ad->button);
 
 	// default state
-	turn_off_accelerometer(ad);
+	elm_object_text_set(ad->button, "Start");
+	ad->state = "off";
 
 	/* Show window after base gui is set up */
 	evas_object_show(ad->win);
