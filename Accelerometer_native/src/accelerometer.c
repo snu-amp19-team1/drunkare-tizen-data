@@ -92,16 +92,69 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 	sensor_type_e type;
 	sensor_get_type(sensor, &type);
 	unsigned long long timestamp;
-	char buf[32];
+	char buf[64];
 	float x, y, z;
+	int sensor_index = 0;
 
+	switch (type) {
+		case SENSOR_ACCELEROMETER:
+			sensor_index = ACCELEROMETER;
+			break;
+		case SENSOR_GYROSCOPE:
+			sensor_index = GYROSCOPE;
+			break;
+		default:
+			break;
+	}
+
+	// Print timestamp
+	timestamp = event->timestamp;
+	sprintf(buf,"[type : %d] time : %lld", sensor_index, timestamp);
+	dlog_print(DLOG_DEBUG, "sensor_callback", buf);
+
+	// Print data
+	x = event->values[0];
+	y = event->values[1];
+	z = event->values[2];
+	sprintf(buf,"[type : %d] %f %f %f",sensor_index, x, y, z);
+	dlog_print(DLOG_DEBUG, "sensor_callback", buf);
+
+	// record to array
+	data = &(ad->sensor_data[sensor_index][ad->iterator[sensor_index]++]);
+	data->index = ad->iterator[sensor_index];
+	data->sensortype = sensor_index;
+	data->timestamp = timestamp;
+	data->x = x;
+	data->y = y;
+	data->z = z;
+
+	// test print
+	dlog_print_sensor_data(*data);
+
+	// reset iterator
+	if (ad->iterator[sensor_index] == SAMPLES_PER_SESOND*DATA_WRITE_TIME){
+		ad->iterator[sensor_index] = 0;
+		sprintf(buf,"[type : %d] timestamp 1sec : %lld", sensor_index , ad->sensor_data[sensor_index][SAMPLES_PER_SESOND*DATA_WRITE_TIME-1].timestamp - ad->sensor_data[sensor_index][0].timestamp);
+		dlog_print(DLOG_DEBUG, "sensor_data_timestamp", buf);
+	}
+
+	// save file
+	const char* data_buf = "test";
+	write_file("data.txt", data_buf);
+
+	// read file for test
+	// => file write works well, but can't see the file in device manager.... why???
+	read_file("data.txt");
+
+
+/*
 	switch (type) {
 	case SENSOR_ACCELEROMETER:
 		timestamp = event->timestamp;
 
 		// Print timestamp
-		sprintf(buf,"[ACCEL] time : %lld",timestamp);
-		dlog_print(DLOG_DEBUG, "accel callback", buf);
+		sprintf(buf,"[type : %d] time : %lld", sensor_index, timestamp);
+		dlog_print(DLOG_DEBUG, "sensor_callback", buf);
 
 		// Currently comment out to suppress unused variable warning
 		// int accuracy = event->accuracy;
@@ -110,13 +163,13 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		x = event->values[0];
 		y = event->values[1];
 		z = event->values[2];
-		sprintf(buf,"%f %f %f",x,y,z);
-		dlog_print(DLOG_DEBUG, "accel callback", buf);
+		sprintf(buf,"[type : %d] %f %f %f",sensor_index, x, y, z);
+		dlog_print(DLOG_DEBUG, "sensor_callback", buf);
 
 		// record to array
-		data = &(ad->sensor_data[ACCELEROMETER][ad->iterator[ACCELEROMETER]++]);
-		data->index = ad->iterator[ACCELEROMETER];
-		data->sensortype = ACCELEROMETER;
+		data = &(ad->sensor_data[sensor_index][ad->iterator[sensor_index]++]);
+		data->index = ad->iterator[sensor_index];
+		data->sensortype = sensor_index;
 		data->timestamp = timestamp;
 		data->x = x;
 		data->y = y;
@@ -126,9 +179,9 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		dlog_print_sensor_data(*data);
 
 		// after 1 sec, reset iterator
-		if (ad->iterator[ACCELEROMETER] == SAMPLES_PER_SESOND*DATA_WRITE_TIME){
-			ad->iterator[ACCELEROMETER] = 0;
-			sprintf(buf,"[ACCEL] timestamp 1sec : %lld", ad->sensor_data[ACCELEROMETER][SAMPLES_PER_SESOND*DATA_WRITE_TIME-1].timestamp - ad->sensor_data[ACCELEROMETER][0].timestamp);
+		if (ad->iterator[sensor_index] == SAMPLES_PER_SESOND*DATA_WRITE_TIME){
+			ad->iterator[sensor_index] = 0;
+			sprintf(buf,"[ACCEL] timestamp 1sec : %lld", ad->sensor_data[sensor_index][SAMPLES_PER_SESOND*DATA_WRITE_TIME-1].timestamp - ad->sensor_data[sensor_index][0].timestamp);
 			dlog_print(DLOG_DEBUG, "sensor_data_timestamp", buf);
 		}
 
@@ -160,9 +213,9 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		dlog_print(DLOG_DEBUG, "gyro callback", buf);
 
 		// record to array
-		data = &(ad->sensor_data[GYROSCOPE][ad->iterator[GYROSCOPE]++]);
-		data->index = ad->iterator[GYROSCOPE];
-		data->sensortype = GYROSCOPE;
+		data = &(ad->sensor_data[sensor_index][ad->iterator[sensor_index]++]);
+		data->index = ad->iterator[sensor_index];
+		data->sensortype = sensor_index;
 		data->timestamp = timestamp;
 		data->x = x;
 		data->y = y;
@@ -172,9 +225,9 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		dlog_print_sensor_data(*data);
 
 		// after 1 sec, reset iterator
-		if (ad->iterator[GYROSCOPE] == SAMPLES_PER_SESOND*DATA_WRITE_TIME){
-			ad->iterator[GYROSCOPE] = 0;
-			sprintf(buf,"[GYRO] timestamp 1sec : %lld", ad->sensor_data[GYROSCOPE][SAMPLES_PER_SESOND*DATA_WRITE_TIME-1].timestamp - ad->sensor_data[GYROSCOPE][0].timestamp);
+		if (ad->iterator[sensor_index] == SAMPLES_PER_SESOND*DATA_WRITE_TIME){
+			ad->iterator[sensor_index] = 0;
+			sprintf(buf,"[GYRO] timestamp 1sec : %lld", ad->sensor_data[sensor_index][SAMPLES_PER_SESOND*DATA_WRITE_TIME-1].timestamp - ad->sensor_data[sensor_index][0].timestamp);
 			dlog_print(DLOG_DEBUG, "sensor_data_timestamp", buf);
 		}
 
@@ -189,9 +242,10 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		break;
 
 	default:
-		/* Do nothing */
+		// Do nothing
 		break;
 	}
+	*/
 }
 
 static void initialize_accelerometer(appdata_s *ad){
