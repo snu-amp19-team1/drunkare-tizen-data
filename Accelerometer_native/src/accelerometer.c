@@ -10,7 +10,7 @@
 #define MILLION				1000000
 #define SAMPLING_RATE		40
 #define SAMPLES_PER_SESOND	(1000 / SAMPLING_RATE)
-#define DATA_WRITE_TIME		10 // 1 sec
+#define DATA_WRITE_TIME		10 // sec
 
 sensor_h default_accelerometer;
 sensor_h default_gyroscope;
@@ -18,7 +18,7 @@ sensor_h default_gyroscope;
 sensor_listener_h accel_listener;
 sensor_listener_h gyro_listener;
 
-const char *filepath;
+const char *filepath; // "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/data/"
 
 /* struct for sensor data */
 typedef struct sensordata {
@@ -50,16 +50,6 @@ void dlog_print_sensor_data(sensordata_s data) {
 	dlog_print(DLOG_DEBUG, "sensor_data", buf);
 }
 
-void dlog_print_sensor_data_for_stop(sensordata_s data[NUM_OF_SENSOR][SAMPLES_PER_SESOND*DATA_WRITE_TIME]) {
-	char buf[255];
-	for(int i = 0; i < NUM_OF_SENSOR; i++) {
-		for(int j = 0; j < SAMPLES_PER_SESOND*DATA_WRITE_TIME; j++) {
-			sprintf(buf,"type: %d / index: %d / time : %lld",data[i][j].sensortype, data[i][j].index, data[i][j].timestamp);
-			dlog_print(DLOG_DEBUG, "stop_message", buf);
-		}
-	}
-}
-
 /* string concatenate */
 char* concat(const char *s1, const char *s2)
 {
@@ -67,14 +57,12 @@ char* concat(const char *s1, const char *s2)
     // in real code you would check for errors in malloc here
     strcpy(result, s1);
     strcat(result, s2);
-    dlog_print(DLOG_DEBUG, "filepath", result);
     return result;
 }
 
 /* write file in data path */
 static void write_file(const char* filename, const char* buf)
 {
-	dlog_print(DLOG_DEBUG, "filepath", filepath);
     FILE *fp;
     fp = fopen(concat(filepath, filename), "w");
     fputs(buf,fp);
@@ -88,7 +76,6 @@ static void read_file(const char* filename)
     char buf[255];
     fp = fopen(concat(filepath, filename), "r");
     fscanf(fp, "%s", buf);
-    dlog_print(DLOG_DEBUG, "filepath", buf);
     fclose(fp);
 }
 
@@ -101,7 +88,7 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 	 */
 
 	appdata_s *ad = user_data;
-	struct sensordata *data;
+	sensordata_s *data;
 	sensor_type_e type;
 	sensor_get_type(sensor, &type);
 	unsigned long long timestamp;
@@ -285,7 +272,6 @@ static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
 	} else if (strcmp(ad->state, "on") == 0) {
 		turn_off_accelerometer(ad);
 		turn_off_gyroscope(ad);
-		dlog_print_sensor_data_for_stop(ad->sensor_data);
 	}
 }
 
@@ -343,8 +329,6 @@ app_create(void *data)
 	appdata_s *ad = data;
 	create_base_gui(ad);
 	filepath = app_get_data_path();
-	//filepath = "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/shared/data/data.txt";
-	//filepath = "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/data/input.txt";
 
 	return true;
 }
