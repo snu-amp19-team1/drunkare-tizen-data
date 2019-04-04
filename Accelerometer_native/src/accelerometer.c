@@ -18,7 +18,7 @@ sensor_h default_gyroscope;
 sensor_listener_h accel_listener;
 sensor_listener_h gyro_listener;
 
-char* filepath;
+const char *filepath;
 
 
 /* struct for sensor data */
@@ -43,12 +43,22 @@ typedef struct appdata {
 
 
 /* print sensor data struct */
-void dlog_print_sensor_data(struct sensordata data) {
+void dlog_print_sensor_data(sensordata_s data) {
 	char buf[32];
 	sprintf(buf,"type : %d timestamp : %lld index : #%d", data.sensortype, data.timestamp, data.index);
 	dlog_print(DLOG_DEBUG, "sensor_data", buf);
 	sprintf(buf,"x : %f y : %f z : %f", data.x, data.y, data.z);
 	dlog_print(DLOG_DEBUG, "sensor_data", buf);
+}
+
+void dlog_print_sensor_data_for_stop(sensordata_s data[NUM_OF_SENSOR][SAMPLES_PER_SESOND*DATA_WRITE_TIME]) {
+	char buf[255];
+	for(int i = 0; i < NUM_OF_SENSOR; i++) {
+		for(int j = 0; j < SAMPLES_PER_SESOND*DATA_WRITE_TIME; j++) {
+			sprintf(buf,"type: %d / index: %d / time : %lld",data[i][j].sensortype, data[i][j].index, data[i][j].timestamp);
+			dlog_print(DLOG_DEBUG, "stop_message", buf);
+		}
+	}
 }
 
 /* string concatenate */
@@ -58,17 +68,31 @@ char* concat(const char *s1, const char *s2)
     // in real code you would check for errors in malloc here
     strcpy(result, s1);
     strcat(result, s2);
+    dlog_print(DLOG_DEBUG, "filepath", result);
     return result;
 }
 
 /* write file in data path */
 static void write_file(const char* filename, const char* buf)
 {
+	dlog_print(DLOG_DEBUG, "filepath", filepath);
     FILE *fp;
     fp = fopen(concat(filepath, filename), "w");
     fputs(buf,fp);
     fclose(fp);
 }
+
+/* read file in data path */
+static void read_file(const char* filename)
+{
+    FILE *fp;
+    char buf[255];
+    fp = fopen(concat(filepath, filename), "r");
+    fscanf(fp, "%s", buf);
+    dlog_print(DLOG_DEBUG, "filepath", buf);
+    fclose(fp);
+}
+
 
 /* Common callback function. user_data = app_data */
 void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
@@ -77,7 +101,7 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 	 it can check the sensor type
 	 */
 
-	appdata_s *ad = (appdata_s*)user_data;
+	appdata_s *ad = user_data;
 	struct sensordata data;
 	sensor_type_e type;
 	sensor_get_type(sensor, &type);
@@ -124,8 +148,12 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		}
 
 		// save file
-		const char* data_buf = "test accel";
+		//const char* data_buf = "accel";
 		write_file("data.txt", data_buf);
+
+		// read file for test
+		// => file write works well, but can't see the file in device manager.... why???
+		read_file("data.txt");
 
 		break;
 
@@ -167,8 +195,12 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		}
 
 		// save file
-		data_buf = "test gyro";
+		data_buf = "gyro";
 		write_file("data.txt", data_buf);
+
+		// read file for test
+		// => file write works well, but can't see the file in device manager.... why???
+		read_file("data.txt");
 
 		break;
 
@@ -256,6 +288,7 @@ static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
 	} else if (strcmp(ad->state, "on") == 0) {
 		turn_off_accelerometer(ad);
 		turn_off_gyroscope(ad);
+		dlog_print_sensor_data_for_stop(ad->sensor_data);
 	}
 }
 
@@ -313,6 +346,8 @@ app_create(void *data)
 	appdata_s *ad = data;
 	create_base_gui(ad);
 	filepath = app_get_data_path();
+	//filepath = "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/shared/data/data.txt";
+	//filepath = "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/data/input.txt";
 
 	return true;
 }
