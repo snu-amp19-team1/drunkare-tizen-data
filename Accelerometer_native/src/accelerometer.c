@@ -168,14 +168,13 @@ win_back_cb(void *data, Evas_Object *obj, void *event_info)
 	elm_win_lower(ad->win);
 }
 
-static void turn_on_accelerometer(appdata_s *ad) {
+static void turn_on_sensor(appdata_s *ad, int sensor_index) {
 	// Start Listener
-	initialize_sensor(ad, ACCELEROMETER);
-	//initialize_accelerometer(ad);
-	sensor_listener_start(listeners[ACCELEROMETER]);
+	initialize_sensor(ad, sensor_index);
+	sensor_listener_start(listeners[sensor_index]);
 	elm_object_text_set(ad->button, "Stop");
 	ad->state = "on";
-	ad->iterator[ACCELEROMETER] = 0;
+	ad->iterator[sensor_index] = 0;
 }
 
 static void turn_off_accelerometer(appdata_s *ad) {
@@ -184,16 +183,6 @@ static void turn_off_accelerometer(appdata_s *ad) {
 	sensor_destroy_listener(listeners[ACCELEROMETER]);
 	elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
-}
-
-static void turn_on_gyroscope(appdata_s *ad) {
-	// Start Listener
-	initialize_sensor(ad, GYROSCOPE);
-	//initialize_gyroscope(ad);
-	sensor_listener_start(listeners[GYROSCOPE]);
-	elm_object_text_set(ad->button, "Stop");
-	ad->state = "on";
-	ad->iterator[GYROSCOPE] = 0;
 }
 
 static void turn_off_gyroscope(appdata_s *ad) {
@@ -207,8 +196,8 @@ static void turn_off_gyroscope(appdata_s *ad) {
 static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
 	appdata_s *ad = data;
 	if(strcmp(ad->state, "off") == 0) {
-		turn_on_accelerometer(ad);
-		turn_on_gyroscope(ad);
+		turn_on_sensor(ad, ACCELEROMETER);
+		turn_on_sensor(ad, GYROSCOPE);
 	} else if (strcmp(ad->state, "on") == 0) {
 		turn_off_accelerometer(ad);
 		turn_off_gyroscope(ad);
