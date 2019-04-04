@@ -12,11 +12,13 @@
 #define SAMPLES_PER_SESOND	(1000 / SAMPLING_RATE)
 #define DATA_WRITE_TIME		10 // sec
 
-sensor_h default_accelerometer;
-sensor_h default_gyroscope;
+sensor_h sensors[NUM_OF_SENSOR];
+//sensor_h default_accelerometer;
+//sensor_h default_gyroscope;
 
-sensor_listener_h accel_listener;
-sensor_listener_h gyro_listener;
+sensor_listener_h listeners[NUM_OF_SENSOR];
+//sensor_listener_h accel_listener;
+//sensor_listener_h gyro_listener;
 
 const char *filepath; // "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/data/"
 
@@ -81,7 +83,7 @@ static void read_file(const char* filename)
 
 
 /* Common callback function. user_data = app_data */
-void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
+void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 	/*
 	 If a callback is used to listen for different sensor types,
 	 it can check the sensor type
@@ -147,6 +149,17 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 	read_file("data.txt");
 }
 
+static void initialize_sensor(appdata_s *ad, int sensor_index) {
+	// Create listener handler using sensor handler
+	sensor_create_listener(sensors[sensor_index], &listeners[sensor_index]);
+
+	// Register callback function
+	// BUG: Time intervals of the last 1~3 measurements are inaccurate
+	sensor_listener_set_event_cb(listeners[sensor_index],
+	                             SAMPLING_RATE,
+	                             sensor_callback, ad);
+}
+/*
 static void initialize_accelerometer(appdata_s *ad){
 	// Create listener handler using sensor handler
 	sensor_create_listener(default_accelerometer, &accel_listener);
@@ -155,7 +168,7 @@ static void initialize_accelerometer(appdata_s *ad){
 	// BUG: Time intervals of the last 1~3 measurements are inaccurate
 	sensor_listener_set_event_cb(accel_listener,
                                      SAMPLING_RATE,
-                                     example_sensor_callback, ad);
+                                     sensor_callback, ad);
 }
 
 static void initialize_gyroscope(appdata_s *ad){
@@ -166,9 +179,9 @@ static void initialize_gyroscope(appdata_s *ad){
 	// BUG: Time intervals of the last 1~3 measurements are inaccurate
 	sensor_listener_set_event_cb(gyro_listener,
                                      SAMPLING_RATE,
-                                     example_sensor_callback, ad);
+                                     sensor_callback, ad);
 }
-
+*/
 static void
 win_delete_request_cb(void *data, Evas_Object *obj, void *event_info)
 {
@@ -185,8 +198,9 @@ win_back_cb(void *data, Evas_Object *obj, void *event_info)
 
 static void turn_on_accelerometer(appdata_s *ad) {
 	// Start Listener
-	initialize_accelerometer(ad);
-	sensor_listener_start(accel_listener);
+	initialize_sensor(ad, ACCELEROMETER);
+	//initialize_accelerometer(ad);
+	sensor_listener_start(listeners[ACCELEROMETER]);
 	elm_object_text_set(ad->button, "Stop");
 	ad->state = "on";
 	ad->iterator[ACCELEROMETER] = 0;
@@ -194,16 +208,17 @@ static void turn_on_accelerometer(appdata_s *ad) {
 
 static void turn_off_accelerometer(appdata_s *ad) {
 	// Stop Listener
-	sensor_listener_stop(accel_listener);
-	sensor_destroy_listener(accel_listener);
+	sensor_listener_stop(listeners[ACCELEROMETER]);
+	sensor_destroy_listener(listeners[ACCELEROMETER]);
 	elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
 }
 
 static void turn_on_gyroscope(appdata_s *ad) {
 	// Start Listener
-	initialize_gyroscope(ad);
-	sensor_listener_start(gyro_listener);
+	initialize_sensor(ad, GYROSCOPE);
+	//initialize_gyroscope(ad);
+	sensor_listener_start(listeners[GYROSCOPE]);
 	elm_object_text_set(ad->button, "Stop");
 	ad->state = "on";
 	ad->iterator[GYROSCOPE] = 0;
@@ -211,8 +226,8 @@ static void turn_on_gyroscope(appdata_s *ad) {
 
 static void turn_off_gyroscope(appdata_s *ad) {
 	// Stop Listener
-	sensor_listener_stop(gyro_listener);
-	sensor_destroy_listener(gyro_listener);
+	sensor_listener_stop(listeners[GYROSCOPE]);
+	sensor_destroy_listener(listeners[GYROSCOPE]);
 	elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
 }
@@ -366,8 +381,8 @@ main(int argc, char *argv[])
 	}
 
     // Initialize sensor handle
-	sensor_get_default_sensor(SENSOR_ACCELEROMETER, &default_accelerometer);
-	sensor_get_default_sensor(SENSOR_GYROSCOPE, &default_gyroscope);
+	sensor_get_default_sensor(SENSOR_ACCELEROMETER, &sensors[ACCELEROMETER]);
+	sensor_get_default_sensor(SENSOR_GYROSCOPE, &sensors[GYROSCOPE]);
 
 	event_callback.create = app_create;
 	event_callback.terminate = app_terminate;
