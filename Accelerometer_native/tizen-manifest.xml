@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns="http://tizen.org/ns/packages" api-version="4.0" package="org.example.accelerometer_4_0" version="1.0.0">
     <profile name="wearable"/>
     <ui-application appid="org.example.accelerometer_4_0" exec="accelerometer_4_0" multiple="false" nodisplay="false" taskmanage="true" type="capp">
