@@ -42,9 +42,9 @@ typedef struct appdata {
 void dlog_print_sensor_data(sensordata_s data) {
 	char buf[64];
 	sprintf(buf,"type : %d timestamp : %lld index : #%d", data.sensortype, data.timestamp, data.index);
-	dlog_print(DLOG_DEBUG, "sensor_data", buf);
+	dlog_print(DLOG_DEBUG, "data_array", buf);
 	sprintf(buf,"x : %f y : %f z : %f", data.x, data.y, data.z);
-	dlog_print(DLOG_DEBUG, "sensor_data", buf);
+	dlog_print(DLOG_DEBUG, "data_array", buf);
 }
 
 /* string concatenate */
@@ -73,6 +73,7 @@ static void read_file(const char* filename)
     char buf[255];
     fp = fopen(concat(filepath, filename), "r");
     fscanf(fp, "%s", buf);
+    dlog_print(DLOG_DEBUG, "file_read", buf);
     fclose(fp);
 }
 
@@ -133,7 +134,7 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 	if (ad->iterator[sensor_index] == SAMPLES_PER_SESOND*DATA_WRITE_TIME){
 		ad->iterator[sensor_index] = 0;
 		sprintf(buf,"[type : %d] timestamp 1sec : %lld", sensor_index , ad->sensor_data[sensor_index][SAMPLES_PER_SESOND*DATA_WRITE_TIME-1].timestamp - ad->sensor_data[sensor_index][0].timestamp);
-		dlog_print(DLOG_DEBUG, "sensor_data_timestamp", buf);
+		dlog_print(DLOG_DEBUG, "sensor_timestamp", buf);
 	}
 
 	// save file
