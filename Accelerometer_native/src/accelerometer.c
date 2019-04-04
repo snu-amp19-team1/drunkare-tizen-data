@@ -67,7 +67,7 @@ const char *filepath;	// "/opt/usr/home/owner/apps_rw/org.example.accelerometer_
 typedef struct sensordata {
 	int index;						/* index of sensor_data array */
 	int sensortype;					/* 0 : ACCELEROMETER , 1 : GYROSCOPE */
-	int classification;				/* (not decided) */
+	int activity;					/* (not decided) */
 	unsigned long long timestamp;	/* timestamp */
 	float x, y, z;					/* data */
 } sensordata_s;
@@ -80,9 +80,41 @@ typedef struct appdata {
 	Evas_Object *buttons[NUM_ACTIVITIES];
 	char *state;
 	sensordata_s sensor_data[NUM_OF_SENSOR][SAMPLES_PER_SESOND*DATA_WRITE_TIME]; // to save data per second
+    int activity; // FIXME
 	int iterator[NUM_OF_SENSOR]; // to save data per second
 } appdata_s;
 
+// Button callbacks
+// FIXME!
+static void btn_cb0(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb1(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb2(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb3(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb4(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb5(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb6(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb7(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb8(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb9(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb10(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb11(void *data, Evas_Object *obj, void *event_info);
+
+typedef void* (*btn_cb_t)(void*, Evas_Object*, void*);
+
+btn_cb_t btn_cb[] = {
+    [ACTIVITY_0]	= &btn_cb0,
+    [ACTIVITY_1]	= &btn_cb1,
+    [ACTIVITY_2]	= &btn_cb2,
+    [ACTIVITY_3]	= &btn_cb3,
+    [ACTIVITY_4]	= &btn_cb4,
+    [ACTIVITY_5]	= &btn_cb5,
+    [ACTIVITY_6]	= &btn_cb6,
+    [ACTIVITY_7]	= &btn_cb7,
+    [ACTIVITY_8]	= &btn_cb8,
+    [ACTIVITY_9]	= &btn_cb9,
+    [ACTIVITY_10]	= &btn_cb10,
+    [ACTIVITY_11]	= &btn_cb11
+};
 
 
 /* print sensordata struct */
@@ -204,20 +236,20 @@ static void initialize_sensor(appdata_s *ad, int sensor_index) {
 	                             sensor_callback, ad);
 }
 
-static void turn_on_sensor(appdata_s *ad, int sensor_index) {
+static void turn_on_sensor(appdata_s *ad, Evas_Object* obj, int sensor_index) {
 	// Start Listener
 	initialize_sensor(ad, sensor_index);
 	sensor_listener_start(listeners[sensor_index]);
-	// elm_object_text_set(ad->button, "Stop");
+	elm_object_text_set(obj, "Stop");
 	ad->state = "on";
 	ad->iterator[sensor_index] = 0;
 }
 
-static void turn_off_sensor(appdata_s *ad, int sensor_index) {
+static void turn_off_sensor(appdata_s *ad, Evas_Object* obj, int sensor_index) {
 	// Stop Listener
 	sensor_listener_stop(listeners[sensor_index]);
 	sensor_destroy_listener(listeners[sensor_index]);
-	// elm_object_text_set(ad->button, "Start");
+	elm_object_text_set(obj, "Start");
 	ad->state = "off";
 }
 
@@ -239,13 +271,77 @@ win_back_cb(void *data, Evas_Object *obj, void *event_info)
 
 static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
 	appdata_s *ad = data;
+
+    dlog_print(DLOG_DEBUG, "activity", "%d", ad->activity);
+
 	if(strcmp(ad->state, "off") == 0) {
-		turn_on_sensor(ad, ACCELEROMETER);
-		turn_on_sensor(ad, GYROSCOPE);
+		turn_on_sensor(ad, obj, ACCELEROMETER);
+		turn_on_sensor(ad, obj, GYROSCOPE);
 	} else if (strcmp(ad->state, "on") == 0) {
-		turn_off_sensor(ad, ACCELEROMETER);
-		turn_off_sensor(ad, GYROSCOPE);
+		turn_off_sensor(ad, obj, ACCELEROMETER);
+		turn_off_sensor(ad, obj, GYROSCOPE);
 	}
+}
+
+static void btn_cb0(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_0;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb1(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_1;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb2(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_2;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb3(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_3;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb4(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_4;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb5(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_5;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb6(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_6;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb7(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_7;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb8(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_8;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb9(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_9;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb10(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_10;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb11(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_11;
+    btn_clicked_cb(data, obj, event_info);
 }
 
 static void
@@ -296,7 +392,7 @@ create_base_gui(appdata_s *ad)
 	evas_object_move(ad->label, 130, 130);
 
     for (a = 0; a < NUM_ACTIVITIES; ++a) {
-        init_button(ad, btn_clicked_cb, a);
+        init_button(ad, btn_cb[a], a);
     }
 
 	// default state
