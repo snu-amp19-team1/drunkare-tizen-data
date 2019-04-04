@@ -10,7 +10,7 @@
 #define MILLION				1000000
 #define SAMPLING_RATE		40
 #define SAMPLES_PER_SESOND	(1000 / SAMPLING_RATE)
-#define DATA_WRITE_TIME		1 // 1 sec
+#define DATA_WRITE_TIME		10 // 1 sec
 
 sensor_h default_accelerometer;
 sensor_h default_gyroscope;
@@ -19,7 +19,6 @@ sensor_listener_h accel_listener;
 sensor_listener_h gyro_listener;
 
 const char *filepath;
-
 
 /* struct for sensor data */
 typedef struct sensordata {
@@ -102,7 +101,7 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 	 */
 
 	appdata_s *ad = user_data;
-	struct sensordata data;
+	struct sensordata *data;
 	sensor_type_e type;
 	sensor_get_type(sensor, &type);
 	unsigned long long timestamp;
@@ -128,27 +127,26 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		dlog_print(DLOG_DEBUG, "accel callback", buf);
 
 		// record to array
-		data = ad->sensor_data[ACCELEROMETER][ad->iterator[ACCELEROMETER]++];
-		data.index = ad->iterator[ACCELEROMETER];
-		data.sensortype = ACCELEROMETER;
-		data.timestamp = timestamp;
-		data.x = x;
-		data.y = y;
-		data.z = z;
+		data = &(ad->sensor_data[ACCELEROMETER][ad->iterator[ACCELEROMETER]++]);
+		data->index = ad->iterator[ACCELEROMETER];
+		data->sensortype = ACCELEROMETER;
+		data->timestamp = timestamp;
+		data->x = x;
+		data->y = y;
+		data->z = z;
 
 		// test print
-		dlog_print_sensor_data(data);
+		dlog_print_sensor_data(*data);
 
 		// after 1 sec, reset iterator
 		if (ad->iterator[ACCELEROMETER] == SAMPLES_PER_SESOND*DATA_WRITE_TIME){
 			ad->iterator[ACCELEROMETER] = 0;
-			// [BUG] print always returns 0 => maybe we should do malloc in appdata to save value?
-			sprintf(buf,"[ACCEL] timestamp[24] : %lld, timestamp[0] : %lld", ad->sensor_data[ACCELEROMETER][SAMPLES_PER_SESOND*DATA_WRITE_TIME-1].timestamp , ad->sensor_data[ACCELEROMETER][0].timestamp);
+			sprintf(buf,"[ACCEL] timestamp 1sec : %lld", ad->sensor_data[ACCELEROMETER][SAMPLES_PER_SESOND*DATA_WRITE_TIME-1].timestamp - ad->sensor_data[ACCELEROMETER][0].timestamp);
 			dlog_print(DLOG_DEBUG, "sensor_data_timestamp", buf);
 		}
 
 		// save file
-		//const char* data_buf = "accel";
+		const char* data_buf = "accel";
 		write_file("data.txt", data_buf);
 
 		// read file for test
@@ -175,22 +173,21 @@ void example_sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_
 		dlog_print(DLOG_DEBUG, "gyro callback", buf);
 
 		// record to array
-		data = ad->sensor_data[GYROSCOPE][ad->iterator[GYROSCOPE]++];
-		data.index = ad->iterator[GYROSCOPE];
-		data.sensortype = GYROSCOPE;
-		data.timestamp = timestamp;
-		data.x = x;
-		data.y = y;
-		data.z = z;
+		data = &(ad->sensor_data[GYROSCOPE][ad->iterator[GYROSCOPE]++]);
+		data->index = ad->iterator[GYROSCOPE];
+		data->sensortype = GYROSCOPE;
+		data->timestamp = timestamp;
+		data->x = x;
+		data->y = y;
+		data->z = z;
 
 		// test print
-		dlog_print_sensor_data(data);
+		dlog_print_sensor_data(*data);
 
 		// after 1 sec, reset iterator
 		if (ad->iterator[GYROSCOPE] == SAMPLES_PER_SESOND*DATA_WRITE_TIME){
 			ad->iterator[GYROSCOPE] = 0;
-			// [BUG] print always returns 0 => maybe we should do malloc in appdata to save value?
-			sprintf(buf,"[GYRO] timestamp[24] : %lld, timestamp[0] : %lld", ad->sensor_data[GYROSCOPE][SAMPLES_PER_SESOND*DATA_WRITE_TIME-1].timestamp , ad->sensor_data[GYROSCOPE][0].timestamp);
+			sprintf(buf,"[GYRO] timestamp 1sec : %lld", ad->sensor_data[GYROSCOPE][SAMPLES_PER_SESOND*DATA_WRITE_TIME-1].timestamp - ad->sensor_data[GYROSCOPE][0].timestamp);
 			dlog_print(DLOG_DEBUG, "sensor_data_timestamp", buf);
 		}
 
@@ -252,7 +249,7 @@ static void turn_on_accelerometer(appdata_s *ad) {
 	sensor_listener_start(accel_listener);
 	elm_object_text_set(ad->button, "Stop");
 	ad->state = "on";
-	ad->iterator[GYROSCOPE] = 0;
+	ad->iterator[ACCELEROMETER] = 0;
 }
 
 static void turn_off_accelerometer(appdata_s *ad) {
