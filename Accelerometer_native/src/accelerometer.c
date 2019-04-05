@@ -3,6 +3,7 @@
 #include <app.h>
 #include "dlog.h"
 #include <Elementary.h>
+#include <device/power.h>
 
 #define NUM_OF_SENSOR		2
 #define ACCELEROMETER		0
@@ -11,6 +12,52 @@
 #define SAMPLING_RATE		40
 #define SAMPLES_PER_SESOND	(1000 / SAMPLING_RATE)
 #define DATA_WRITE_TIME		10 // sec
+#define NUM_ACTIVITIES		12
+
+// TODO: Replace with real label name
+#define ACTIVITY_0		0
+#define ACTIVITY_1		1
+#define ACTIVITY_2		2
+#define ACTIVITY_3		3
+#define ACTIVITY_4		4
+#define ACTIVITY_5		5
+#define ACTIVITY_6		6
+#define ACTIVITY_7		7
+#define ACTIVITY_8		8
+#define ACTIVITY_9		9
+#define ACTIVITY_10		10
+#define ACTIVITY_11		11
+
+// Define button size
+#define BTN_H		60
+#define BTN_W		80
+
+typedef struct pos {
+    int x;
+    int y;
+} pos_t;
+
+// Define button location
+pos_t button_pos[] = {
+    [ACTIVITY_0]	= {40, 30},
+    [ACTIVITY_1]	= {140, 30},
+    [ACTIVITY_2]	= {240, 30},
+    [ACTIVITY_3]	= {40, 110},
+    [ACTIVITY_4]	= {140, 110},
+    [ACTIVITY_5]	= {240, 110},
+    [ACTIVITY_6]	= {40, 190},
+    [ACTIVITY_7]	= {140, 190},
+    [ACTIVITY_8]	= {240, 190},
+    [ACTIVITY_9]	= {40, 270},
+    [ACTIVITY_10]	= {140, 270},
+    [ACTIVITY_11]	= {240, 270}
+};
+
+#define BTN_X(a)	(button_pos[a].x)
+#define BTN_Y(a)	(button_pos[a].y)
+
+// Convert activity number to button object pointer
+#define activity2btn(ad, a) (Evas_Object *)(ad->buttons[a])
 
 sensor_h sensors[NUM_OF_SENSOR];
 sensor_listener_h listeners[NUM_OF_SENSOR];
@@ -20,7 +67,7 @@ const char *filepath;	// "/opt/usr/home/owner/apps_rw/org.example.accelerometer_
 typedef struct sensordata {
 	int index;						/* index of sensor_data array */
 	int sensortype;					/* 0 : ACCELEROMETER , 1 : GYROSCOPE */
-	int classification;				/* (not decided) */
+	int activity;					/* (not decided) */
 	unsigned long long timestamp;	/* timestamp */
 	float x, y, z;					/* data */
 } sensordata_s;
@@ -30,12 +77,44 @@ typedef struct appdata {
 	Evas_Object *win;
 	Evas_Object *conform;
 	Evas_Object *label;
-	Evas_Object *button;
+	Evas_Object *buttons[NUM_ACTIVITIES];
 	char *state;
 	sensordata_s sensor_data[NUM_OF_SENSOR][SAMPLES_PER_SESOND*DATA_WRITE_TIME]; // to save data per second
+    int activity; // FIXME
 	int iterator[NUM_OF_SENSOR]; // to save data per second
 } appdata_s;
 
+// Button callbacks
+// FIXME!
+static void btn_cb0(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb1(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb2(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb3(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb4(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb5(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb6(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb7(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb8(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb9(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb10(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb11(void *data, Evas_Object *obj, void *event_info);
+
+typedef void* (*btn_cb_t)(void*, Evas_Object*, void*);
+
+btn_cb_t btn_cb[] = {
+    [ACTIVITY_0]	= &btn_cb0,
+    [ACTIVITY_1]	= &btn_cb1,
+    [ACTIVITY_2]	= &btn_cb2,
+    [ACTIVITY_3]	= &btn_cb3,
+    [ACTIVITY_4]	= &btn_cb4,
+    [ACTIVITY_5]	= &btn_cb5,
+    [ACTIVITY_6]	= &btn_cb6,
+    [ACTIVITY_7]	= &btn_cb7,
+    [ACTIVITY_8]	= &btn_cb8,
+    [ACTIVITY_9]	= &btn_cb9,
+    [ACTIVITY_10]	= &btn_cb10,
+    [ACTIVITY_11]	= &btn_cb11
+};
 
 
 /* print sensordata struct */
@@ -157,20 +236,20 @@ static void initialize_sensor(appdata_s *ad, int sensor_index) {
 	                             sensor_callback, ad);
 }
 
-static void turn_on_sensor(appdata_s *ad, int sensor_index) {
+static void turn_on_sensor(appdata_s *ad, Evas_Object* obj, int sensor_index) {
 	// Start Listener
 	initialize_sensor(ad, sensor_index);
 	sensor_listener_start(listeners[sensor_index]);
-	elm_object_text_set(ad->button, "Stop");
+	elm_object_text_set(obj, "Stop");
 	ad->state = "on";
 	ad->iterator[sensor_index] = 0;
 }
 
-static void turn_off_sensor(appdata_s *ad, int sensor_index) {
+static void turn_off_sensor(appdata_s *ad, Evas_Object* obj, int sensor_index) {
 	// Stop Listener
 	sensor_listener_stop(listeners[sensor_index]);
 	sensor_destroy_listener(listeners[sensor_index]);
-	elm_object_text_set(ad->button, "Start");
+	elm_object_text_set(obj, "Start");
 	ad->state = "off";
 }
 
@@ -192,18 +271,99 @@ win_back_cb(void *data, Evas_Object *obj, void *event_info)
 
 static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
 	appdata_s *ad = data;
+
+    dlog_print(DLOG_DEBUG, "activity", "%d", ad->activity);
+
 	if(strcmp(ad->state, "off") == 0) {
-		turn_on_sensor(ad, ACCELEROMETER);
-		turn_on_sensor(ad, GYROSCOPE);
+		turn_on_sensor(ad, obj, ACCELEROMETER);
+		turn_on_sensor(ad, obj, GYROSCOPE);
 	} else if (strcmp(ad->state, "on") == 0) {
-		turn_off_sensor(ad, ACCELEROMETER);
-		turn_off_sensor(ad, GYROSCOPE);
+		turn_off_sensor(ad, obj, ACCELEROMETER);
+		turn_off_sensor(ad, obj, GYROSCOPE);
 	}
+}
+
+static void btn_cb0(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_0;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb1(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_1;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb2(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_2;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb3(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_3;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb4(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_4;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb5(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_5;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb6(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_6;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb7(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_7;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb8(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_8;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb9(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_9;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb10(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_10;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb11(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_11;
+    btn_clicked_cb(data, obj, event_info);
+}
+
+static void
+init_button(appdata_s *ad,
+            void (*cb)(void *data, Evas_Object *obj, void *event_info),
+            int a)
+{
+    if (a >= NUM_ACTIVITIES)
+        return;
+
+    ad->buttons[a] = elm_button_add(ad->win);
+	evas_object_smart_callback_add(ad->buttons[a], "clicked", cb, ad);
+	evas_object_move(ad->buttons[a], BTN_X(a), BTN_Y(a));
+	evas_object_resize(ad->buttons[a], BTN_W, BTN_H);
+	evas_object_show(ad->buttons[a]);
 }
 
 static void
 create_base_gui(appdata_s *ad)
 {
+    int a;
+
 	/* Window */
 	ad->win = elm_win_util_standard_add(PACKAGE, PACKAGE);
 	elm_win_autodel_set(ad->win, EINA_TRUE);
@@ -226,20 +386,17 @@ create_base_gui(appdata_s *ad)
 
 	/* Label */
 	ad->label = elm_label_add(ad->conform);
-	elm_object_text_set(ad->label, "<align=center><br>ACCELEROMETER</br></align>");
+	elm_object_text_set(ad->label, "");
 	evas_object_size_hint_weight_set(ad->label, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
 	elm_object_content_set(ad->conform, ad->label);
 	evas_object_move(ad->label, 130, 130);
 
-	/* Set button */
-	ad->button = elm_button_add(ad->win);
-	evas_object_smart_callback_add(ad->button, "clicked", btn_clicked_cb, ad);
-	evas_object_move(ad->button, 130, 100);
-	evas_object_resize(ad->button, 100, 60);
-	evas_object_show(ad->button);
+    for (a = 0; a < NUM_ACTIVITIES; ++a) {
+        init_button(ad, btn_cb[a], a);
+    }
 
 	// default state
-	elm_object_text_set(ad->button, "Start");
+	// elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
 
 	/* Show window after base gui is set up */
@@ -342,6 +499,9 @@ main(int argc, char *argv[])
     // Initialize sensor handle
 	sensor_get_default_sensor(SENSOR_ACCELEROMETER, &sensors[ACCELEROMETER]);
 	sensor_get_default_sensor(SENSOR_GYROSCOPE, &sensors[GYROSCOPE]);
+
+	// Lock CPU power
+	device_power_request_lock(POWER_LOCK_CPU, 0);
 
 	event_callback.create = app_create;
 	event_callback.terminate = app_terminate;
