@@ -11,9 +11,9 @@
 #define MILLION				1000000
 #define SAMPLING_RATE		40
 #define SAMPLES_PER_SECOND	(1000 / SAMPLING_RATE)
-#define DATA_WRITE_TIME		6 // sec
+#define SENSOR_DURATION		6 // sec
 #define NUM_ACTIVITIES		12
-#define NUM_SAMPLES			(SAMPLES_PER_SECOND * DATA_WRITE_TIME)
+#define NUM_SAMPLES			(SAMPLES_PER_SECOND * SENSOR_DURATION)
 #define TAG_LEN				3
 
 // TODO: Replace with real activity name
@@ -138,11 +138,11 @@ btn_cb_t btn_cb[] = {
 
 /* print sensordata struct */
 void dlog_print_sensor_data(sensordata_s data) {
-	char buf[64];
-	sprintf(buf,"type : %d timestamp : %lld index : #%d", data.sensortype, data.timestamp, data.index);
-	dlog_print(DLOG_DEBUG, "data_array", buf);
-	sprintf(buf,"x : %f y : %f z : %f", data.x, data.y, data.z);
-	dlog_print(DLOG_DEBUG, "data_array", buf);
+	dlog_print(DLOG_DEBUG, "data_array",
+               "type : %d timestamp : %lld index : #%d",
+               data.sensortype, data.timestamp, data.index);
+	dlog_print(DLOG_DEBUG, "data_array",
+               "x : %f y : %f z : %f", data.x, data.y, data.z);
 }
 
 /* string concatenate */
@@ -189,8 +189,7 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 	sensordata_s *data;
 	sensor_type_e type;
 	sensor_get_type(sensor, &type);
-	unsigned long long timestamp;
-	char buf[64];
+	unsigned long long timestamp, elapsed;
 	float x, y, z;
 	int sensor_index = 0;
     bool all_finished = true;
@@ -213,15 +212,16 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 
 	// Print timestamp
 	timestamp = event->timestamp;
-	sprintf(buf,"[type : %d] time : %lld", sensor_index, timestamp);
-	dlog_print(DLOG_DEBUG, "sensor_callback", buf);
+	dlog_print(DLOG_DEBUG, "sensor_callback",
+               "[type : %d] time : %lld",
+               sensor_index, timestamp);
 
 	// Print data
 	x = event->values[0];
 	y = event->values[1];
 	z = event->values[2];
-	sprintf(buf,"[type : %d] %f %f %f",sensor_index, x, y, z);
-	dlog_print(DLOG_DEBUG, "sensor_callback", buf);
+	dlog_print(DLOG_DEBUG, "sensor_callback",
+               "[type : %d] %f %f %f",sensor_index, x, y, z);
 
 	// record to array
 	data = &(ad->sensor_data[sensor_index][ad->iterator[sensor_index]++]);
@@ -250,9 +250,13 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
             enable_buttons(ad);
         }
 
-        // Check the difference between the timestamp of the last measurement and the first measurement
-		sprintf(buf,"[type : %d] timestamp 1sec : %lld", sensor_index , ad->sensor_data[sensor_index][NUM_SAMPLES - 1].timestamp - ad->sensor_data[sensor_index][0].timestamp);
-		dlog_print(DLOG_DEBUG, "sensor_timestamp", buf);
+        // Check the difference between the timestamp of the last
+        // measurement and the first measurement
+        elapsed = ad->sensor_data[sensor_index][NUM_SAMPLES-1].timestamp -
+            ad->sensor_data[sensor_index][0].timestamp;
+		dlog_print(DLOG_DEBUG, "sensor_timestamp",
+                   "[type : %d] Expected: %d sec GOT: %lld us",
+                   sensor_index, SENSOR_DURATION, elapsed);
 	}
 
 	// save file
