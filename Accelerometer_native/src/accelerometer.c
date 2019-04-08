@@ -5,16 +5,18 @@
 #include <Elementary.h>
 #include <device/power.h>
 
-#define NUM_OF_SENSOR		2
+#define NUM_SENSORS			2
 #define ACCELEROMETER		0
 #define GYROSCOPE			1
 #define MILLION				1000000
 #define SAMPLING_RATE		40
-#define SAMPLES_PER_SESOND	(1000 / SAMPLING_RATE)
-#define DATA_WRITE_TIME		10 // sec
+#define SAMPLES_PER_SECOND	(1000 / SAMPLING_RATE)
+#define SENSOR_DURATION		6 // sec
 #define NUM_ACTIVITIES		12
+#define NUM_SAMPLES			(SAMPLES_PER_SECOND * SENSOR_DURATION)
+#define TAG_LEN				3
 
-// TODO: Replace with real label name
+// TODO: Replace with real activity name
 #define ACTIVITY_0		0
 #define ACTIVITY_1		1
 #define ACTIVITY_2		2
@@ -56,11 +58,27 @@ pos_t button_pos[] = {
 #define BTN_X(a)	(button_pos[a].x)
 #define BTN_Y(a)	(button_pos[a].y)
 
+char btn_tag[][TAG_LEN] = {
+    // TODO: Replace with real activity tag
+    [ACTIVITY_0]	= "1",
+    [ACTIVITY_1]	= "2",
+    [ACTIVITY_2]	= "3",
+    [ACTIVITY_3]	= "4",
+    [ACTIVITY_4]	= "5",
+    [ACTIVITY_5]	= "6",
+    [ACTIVITY_6]	= "7",
+    [ACTIVITY_7]	= "8",
+    [ACTIVITY_8]	= "9",
+    [ACTIVITY_9]	= "10",
+    [ACTIVITY_10]	= "11",
+    [ACTIVITY_11]	= "12"
+};
+
 // Convert activity number to button object pointer
 #define activity2btn(ad, a) (Evas_Object *)(ad->buttons[a])
 
-sensor_h sensors[NUM_OF_SENSOR];
-sensor_listener_h listeners[NUM_OF_SENSOR];
+sensor_h sensors[NUM_SENSORS];
+sensor_listener_h listeners[NUM_SENSORS];
 const char *filepath;	// "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/data/"
 
 /* struct for sensor data */
@@ -79,9 +97,10 @@ typedef struct appdata {
 	Evas_Object *label;
 	Evas_Object *buttons[NUM_ACTIVITIES];
 	char *state;
-	sensordata_s sensor_data[NUM_OF_SENSOR][SAMPLES_PER_SESOND*DATA_WRITE_TIME]; // to save data per second
+	sensordata_s sensor_data[NUM_SENSORS][NUM_SAMPLES];
     int activity; // FIXME
-	int iterator[NUM_OF_SENSOR]; // to save data per second
+	int iterator[NUM_SENSORS];
+	bool is_finished[NUM_SENSORS]; // set if measurement is finished
 } appdata_s;
 
 // Button callbacks
@@ -119,11 +138,11 @@ btn_cb_t btn_cb[] = {
 
 /* print sensordata struct */
 void dlog_print_sensor_data(sensordata_s data) {
-	char buf[64];
-	sprintf(buf,"type : %d timestamp : %lld index : #%d", data.sensortype, data.timestamp, data.index);
-	dlog_print(DLOG_DEBUG, "data_array", buf);
-	sprintf(buf,"x : %f y : %f z : %f", data.x, data.y, data.z);
-	dlog_print(DLOG_DEBUG, "data_array", buf);
+	dlog_print(DLOG_DEBUG, "data_array",
+               "type : %d timestamp : %lld index : #%d",
+               data.sensortype, data.timestamp, data.index);
+	dlog_print(DLOG_DEBUG, "data_array",
+               "x : %f y : %f z : %f", data.x, data.y, data.z);
 }
 
 /* string concatenate */
@@ -156,7 +175,8 @@ static void read_file(const char* filename)
     fclose(fp);
 }
 
-
+static void turn_off_sensors(appdata_s* ad);
+static void enable_buttons(appdata_s* ad);
 
 /* Common callback function */
 void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
@@ -169,10 +189,11 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 	sensordata_s *data;
 	sensor_type_e type;
 	sensor_get_type(sensor, &type);
-	unsigned long long timestamp;
-	char buf[64];
+	unsigned long long timestamp, elapsed;
 	float x, y, z;
 	int sensor_index = 0;
+    bool all_finished = true;
+    int i;
 
 	switch (type) {
 		case SENSOR_ACCELEROMETER:
@@ -185,17 +206,22 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 			break;
 	}
 
+    // The measurement is already finished
+    if (ad->is_finished[sensor_index])
+        return;
+
 	// Print timestamp
 	timestamp = event->timestamp;
-	sprintf(buf,"[type : %d] time : %lld", sensor_index, timestamp);
-	dlog_print(DLOG_DEBUG, "sensor_callback", buf);
+	dlog_print(DLOG_DEBUG, "sensor_callback",
+               "[type : %d] time : %lld",
+               sensor_index, timestamp);
 
 	// Print data
 	x = event->values[0];
 	y = event->values[1];
 	z = event->values[2];
-	sprintf(buf,"[type : %d] %f %f %f",sensor_index, x, y, z);
-	dlog_print(DLOG_DEBUG, "sensor_callback", buf);
+	dlog_print(DLOG_DEBUG, "sensor_callback",
+               "[type : %d] %f %f %f",sensor_index, x, y, z);
 
 	// record to array
 	data = &(ad->sensor_data[sensor_index][ad->iterator[sensor_index]++]);
@@ -209,11 +235,28 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 	// test print
 	dlog_print_sensor_data(*data);
 
-	// reset iterator
-	if (ad->iterator[sensor_index] == SAMPLES_PER_SESOND*DATA_WRITE_TIME){
-		ad->iterator[sensor_index] = 0;
-		sprintf(buf,"[type : %d] timestamp 1sec : %lld", sensor_index , ad->sensor_data[sensor_index][SAMPLES_PER_SESOND*DATA_WRITE_TIME-1].timestamp - ad->sensor_data[sensor_index][0].timestamp);
-		dlog_print(DLOG_DEBUG, "sensor_timestamp", buf);
+	// stop measurement
+	if (ad->iterator[sensor_index] == NUM_SAMPLES) {
+        ad->is_finished[sensor_index] = true;
+
+        for (i = 0; i < NUM_SENSORS; i++) {
+            all_finished &= ad->is_finished[sensor_index];
+        }
+
+        // If all measurements are finished, turn off the sensors
+        // and re-enable the buttons
+        if (all_finished) {
+            turn_off_sensors(ad);
+            enable_buttons(ad);
+        }
+
+        // Check the difference between the timestamp of the last
+        // measurement and the first measurement
+        elapsed = ad->sensor_data[sensor_index][NUM_SAMPLES-1].timestamp -
+            ad->sensor_data[sensor_index][0].timestamp;
+		dlog_print(DLOG_DEBUG, "sensor_timestamp",
+                   "[type : %d] Expected: %d sec GOT: %lld us",
+                   sensor_index, SENSOR_DURATION, elapsed);
 	}
 
 	// save file
@@ -226,6 +269,11 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 }
 
 static void initialize_sensor(appdata_s *ad, int sensor_index) {
+    int i;
+    for (i = 0; i < NUM_SENSORS; i++) {
+        ad->is_finished[i] = false;
+    }
+
 	// Create listener handler using sensor handler
 	sensor_create_listener(sensors[sensor_index], &listeners[sensor_index]);
 
@@ -236,23 +284,38 @@ static void initialize_sensor(appdata_s *ad, int sensor_index) {
 	                             sensor_callback, ad);
 }
 
-static void turn_on_sensor(appdata_s *ad, Evas_Object* obj, int sensor_index) {
+static void turn_on_sensor(appdata_s *ad, int sensor_index) {
 	// Start Listener
 	initialize_sensor(ad, sensor_index);
 	sensor_listener_start(listeners[sensor_index]);
-	elm_object_text_set(obj, "Stop");
 	ad->state = "on";
 	ad->iterator[sensor_index] = 0;
 }
 
-static void turn_off_sensor(appdata_s *ad, Evas_Object* obj, int sensor_index) {
+static void
+turn_on_sensors(appdata_s* ad)
+{
+    int i;
+    for (int i = 0; i < NUM_SENSORS; i++) {
+        turn_on_sensor(ad, i);
+    }
+}
+
+static void turn_off_sensor(appdata_s *ad, int sensor_index) {
 	// Stop Listener
 	sensor_listener_stop(listeners[sensor_index]);
 	sensor_destroy_listener(listeners[sensor_index]);
-	elm_object_text_set(obj, "Start");
 	ad->state = "off";
 }
 
+static void
+turn_off_sensors(appdata_s* ad)
+{
+    int i;
+    for (int i = 0; i < NUM_SENSORS; i++) {
+        turn_off_sensor(ad, i);
+    }
+}
 
 
 static void
@@ -269,18 +332,17 @@ win_back_cb(void *data, Evas_Object *obj, void *event_info)
 	elm_win_lower(ad->win);
 }
 
+static void disable_buttons(appdata_s* ad);
+
 static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
 	appdata_s *ad = data;
 
     dlog_print(DLOG_DEBUG, "activity", "%d", ad->activity);
 
 	if(strcmp(ad->state, "off") == 0) {
-		turn_on_sensor(ad, obj, ACCELEROMETER);
-		turn_on_sensor(ad, obj, GYROSCOPE);
-	} else if (strcmp(ad->state, "on") == 0) {
-		turn_off_sensor(ad, obj, ACCELEROMETER);
-		turn_off_sensor(ad, obj, GYROSCOPE);
-	}
+		turn_on_sensors(ad);
+        disable_buttons(ad);
+    }
 }
 
 static void btn_cb0(void *data, Evas_Object *obj, void *event_info) {
@@ -356,7 +418,26 @@ init_button(appdata_s *ad,
 	evas_object_smart_callback_add(ad->buttons[a], "clicked", cb, ad);
 	evas_object_move(ad->buttons[a], BTN_X(a), BTN_Y(a));
 	evas_object_resize(ad->buttons[a], BTN_W, BTN_H);
+    elm_object_text_set(ad->buttons[a], btn_tag[a]);
 	evas_object_show(ad->buttons[a]);
+}
+
+static void
+disable_buttons(appdata_s *ad)
+{
+    int i;
+    for (i = 0; i < NUM_ACTIVITIES; i++) {
+        elm_object_disabled_set(ad->buttons[i], EINA_TRUE);
+    }
+}
+
+static void
+enable_buttons(appdata_s *ad)
+{
+    int i;
+    for (i = 0; i < NUM_ACTIVITIES; i++) {
+        elm_object_disabled_set(ad->buttons[i], EINA_FALSE);
+    }
 }
 
 static void
@@ -396,7 +477,6 @@ create_base_gui(appdata_s *ad)
     }
 
 	// default state
-	// elm_object_text_set(ad->button, "Start");
 	ad->state = "off";
 
 	/* Show window after base gui is set up */
