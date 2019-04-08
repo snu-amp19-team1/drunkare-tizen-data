@@ -80,6 +80,7 @@ char btn_tag[][TAG_LEN] = {
 sensor_h sensors[NUM_SENSORS];
 sensor_listener_h listeners[NUM_SENSORS];
 const char *filepath;	// "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/data/"
+const char *filename;	// data.csv
 
 /* struct for sensor data */
 typedef struct sensordata {
@@ -175,6 +176,27 @@ static void read_file(const char* filename)
     fclose(fp);
 }
 
+/* dump sensor data to file */
+static void dump_data(int type, sensordata_s data[NUM_SENSORS][NUM_SAMPLES])
+{
+	char data_buf[64]; /* (Date, Time, Activity, Sensor, x, y, z) */
+
+	// set time
+	time_t raw_time;
+	struct tm* time_info;
+	time(&raw_time);
+	time_info = localtime(&raw_time);
+
+	// write sensor data
+	// (20190408, 147942607, 0, 0, 1.000000, 1.000000, 1.000000)
+
+	for (int i = 0; i < NUM_SAMPLES; i++) {
+		sensordata_s current_data = data[type][i];
+		sprintf(data_buf,"%d%s%d%s%d, %lld, %d, %d, %f, %f, %f\n", time_info->tm_year+1900, time_info->tm_mon<10? "0" : "", time_info->tm_mon+1, time_info->tm_mday<10? "0" : "",time_info->tm_mday, current_data.timestamp, current_data.activity, current_data.sensortype, current_data.x, current_data.y, current_data.z);
+		write_file(filename, data_buf);
+	}
+}
+
 static void turn_off_sensors(appdata_s* ad);
 static void enable_buttons(appdata_s* ad);
 
@@ -243,11 +265,17 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
             all_finished &= ad->is_finished[sensor_index];
         }
 
-        // If all measurements are finished, turn off the sensors
+        // If all measurements are finished, turn off the sensors, dump the sensor data to file,
         // and re-enable the buttons
         if (all_finished) {
             turn_off_sensors(ad);
             enable_buttons(ad);
+
+            // dump sensor data to file
+            dump_data(sensor_index, ad->sensor_data);
+
+            // read file for test
+            read_file(filename);
         }
 
         // Check the difference between the timestamp of the last
@@ -258,14 +286,6 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
                    "[type : %d] Expected: %d sec GOT: %lld us",
                    sensor_index, SENSOR_DURATION, elapsed);
 	}
-
-	// save file
-	const char* data_buf = "test";
-	write_file("data.txt", data_buf);
-
-	// read file for test
-	// => file write works well, but can't see the file in device manager.... why???
-	read_file("data.txt");
 }
 
 static void initialize_sensor(appdata_s *ad, int sensor_index) {
@@ -493,6 +513,10 @@ app_create(void *data)
 	appdata_s *ad = data;
 	create_base_gui(ad);
 	filepath = app_get_data_path();
+	filename = "data.csv";
+
+	// [TODO] if file not exists
+	write_file(filename, "Date, Time, Activity, Sensor, x, y, z"); // initialize
 
 	return true;
 }
