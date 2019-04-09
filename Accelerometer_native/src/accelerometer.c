@@ -300,7 +300,6 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
         // measurement and the first measurement
         elapsed = ad->sensor_data[sensor_index][NUM_SAMPLES-1].timestamp -
             ad->sensor_data[sensor_index][0].timestamp;
-
 		dlog_print(DLOG_DEBUG, "sensor_timestamp",
                    "[type : %d] Expected: %d sec GOT: %lld us",
                    sensor_index, SENSOR_DURATION, elapsed);
