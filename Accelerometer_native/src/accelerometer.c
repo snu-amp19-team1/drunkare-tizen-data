@@ -187,7 +187,7 @@ static void create_file(const char* filename)
 }
 
 /* dump sensor data to file */
-static void dump_data(int type, sensordata_s data[NUM_SENSORS][NUM_SAMPLES])
+static void dump_data(int type, sensordata_s data[NUM_SAMPLES])
 {
 	char data_buf[64]; /* (Date, Time, Activity, Sensor, x, y, z) */
 
@@ -201,7 +201,7 @@ static void dump_data(int type, sensordata_s data[NUM_SENSORS][NUM_SAMPLES])
 	// (20190408, 147942607, 0, 0, 1.000000, 1.000000, 1.000000)
 
 	for (int i = 0; i < NUM_SAMPLES; i++) {
-		sensordata_s current_data = data[type][i];
+		sensordata_s current_data = data[i];
 		sprintf(data_buf,"%d%s%d%s%d, %lld, %d, %d, %f, %f, %f\n", time_info->tm_year+1900, time_info->tm_mon<10? "0" : "", time_info->tm_mon+1, time_info->tm_mday<10? "0" : "",time_info->tm_mday, current_data.timestamp, current_data.activity, current_data.sensortype, current_data.x, current_data.y, current_data.z);
 		write_file(filename, data_buf);
 	}
@@ -275,23 +275,24 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
             all_finished &= ad->is_finished[i];
         }
 
-        // If all measurements are finished, turn off the sensors, dump the sensor data to file,
+        // If all measurements are finished, turn off the sensors,
         // and re-enable the buttons
         if (all_finished) {
             turn_off_sensors(ad);
             enable_buttons(ad);
-
-            // dump sensor data to file
-            dump_data(sensor_index, ad->sensor_data);
-
-            // read file for test
-            read_file(filename);
         }
+
+        // dump sensor data to file
+        dump_data(sensor_index, ad->sensor_data[sensor_index]);
+
+        // read file for test
+        read_file(filename);
 
         // Check the difference between the timestamp of the last
         // measurement and the first measurement
         elapsed = ad->sensor_data[sensor_index][NUM_SAMPLES-1].timestamp -
             ad->sensor_data[sensor_index][0].timestamp;
+
 		dlog_print(DLOG_DEBUG, "sensor_timestamp",
                    "[type : %d] Expected: %d sec GOT: %lld us",
                    sensor_index, SENSOR_DURATION, elapsed);
