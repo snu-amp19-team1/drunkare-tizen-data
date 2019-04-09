@@ -80,6 +80,7 @@ char btn_tag[][TAG_LEN] = {
 sensor_h sensors[NUM_SENSORS];
 sensor_listener_h listeners[NUM_SENSORS];
 const char *filepath;	// "/opt/usr/home/owner/apps_rw/org.example.accelerometer_4_0/data/"
+const char *filename;	// data.csv
 
 /* struct for sensor data */
 typedef struct sensordata {
@@ -159,7 +160,7 @@ char* concat(const char *s1, const char *s2)
 static void write_file(const char* filename, const char* buf)
 {
     FILE *fp;
-    fp = fopen(concat(filepath, filename), "w");
+    fp = fopen(concat(filepath, filename), "a");
     fputs(buf,fp);
     fclose(fp);
 }
@@ -170,9 +171,47 @@ static void read_file(const char* filename)
     FILE *fp;
     char buf[255];
     fp = fopen(concat(filepath, filename), "r");
-    fscanf(fp, "%s", buf);
-    dlog_print(DLOG_DEBUG, "file_read", buf);
+    while (fscanf(fp, "%s", buf) != EOF) {
+    	dlog_print(DLOG_DEBUG, "file_read", buf);
+    }
     fclose(fp);
+}
+
+/* create and initialize csv file */
+static void create_file(const char* filename)
+{
+	if(access(concat(filepath, filename), F_OK) == -1) {
+		// file doesn't exist
+		write_file(filename, "Date, Time, Activity, Sensor, x, y, z\n");
+	}
+}
+
+/* dump sensor data to file */
+static void dump_data(int type, sensordata_s data[NUM_SAMPLES])
+{
+	int offset = 0;
+	char data_buf[64 * NUM_SAMPLES]; /* (Date, Time, Activity, Sensor, x, y, z) */
+
+	// set time
+	time_t raw_time;
+	struct tm* time_info;
+	time(&raw_time);
+	time_info = localtime(&raw_time);
+
+	// write sensor data
+	// (20190408, 147942607, 0, 0, 1.000000, 1.000000, 1.000000)
+
+	for (int i = 0; i < NUM_SAMPLES; i++) {
+		sensordata_s current_data = data[i];
+		sprintf(data_buf + offset,"%d%s%d%s%d, %lld, %d, %d, %f, %f, %f\n",
+                        time_info->tm_year+1900, time_info->tm_mon<10? "0" : "",
+                        time_info->tm_mon+1, time_info->tm_mday<10? "0" : "",
+                        time_info->tm_mday, current_data.timestamp,
+                        current_data.activity, current_data.sensortype,
+                        current_data.x, current_data.y, current_data.z);
+		offset = strlen(data_buf);
+	}
+	write_file(filename, data_buf);
 }
 
 static void turn_off_sensors(appdata_s* ad);
@@ -227,6 +266,7 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 	data = &(ad->sensor_data[sensor_index][ad->iterator[sensor_index]++]);
 	data->index = ad->iterator[sensor_index];
 	data->sensortype = sensor_index;
+    data->activity = ad->activity;
 	data->timestamp = timestamp;
 	data->x = x;
 	data->y = y;
@@ -240,7 +280,7 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
         ad->is_finished[sensor_index] = true;
 
         for (i = 0; i < NUM_SENSORS; i++) {
-            all_finished &= ad->is_finished[sensor_index];
+            all_finished &= ad->is_finished[i];
         }
 
         // If all measurements are finished, turn off the sensors
@@ -250,6 +290,12 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
             enable_buttons(ad);
         }
 
+        // dump sensor data to file
+        dump_data(sensor_index, ad->sensor_data[sensor_index]);
+
+        // read file for test
+        read_file(filename);
+
         // Check the difference between the timestamp of the last
         // measurement and the first measurement
         elapsed = ad->sensor_data[sensor_index][NUM_SAMPLES-1].timestamp -
@@ -258,14 +304,6 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
                    "[type : %d] Expected: %d sec GOT: %lld us",
                    sensor_index, SENSOR_DURATION, elapsed);
 	}
-
-	// save file
-	const char* data_buf = "test";
-	write_file("data.txt", data_buf);
-
-	// read file for test
-	// => file write works well, but can't see the file in device manager.... why???
-	read_file("data.txt");
 }
 
 static void initialize_sensor(appdata_s *ad, int sensor_index) {
@@ -493,6 +531,10 @@ app_create(void *data)
 	appdata_s *ad = data;
 	create_base_gui(ad);
 	filepath = app_get_data_path();
+	filename = "data.csv";
+
+	// initialize file
+	create_file(filename);
 
 	return true;
 }
