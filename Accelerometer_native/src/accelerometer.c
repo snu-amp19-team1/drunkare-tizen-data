@@ -272,7 +272,7 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
         ad->is_finished[sensor_index] = true;
 
         for (i = 0; i < NUM_SENSORS; i++) {
-            all_finished &= ad->is_finished[sensor_index];
+            all_finished &= ad->is_finished[i];
         }
 
         // If all measurements are finished, turn off the sensors, dump the sensor data to file,
