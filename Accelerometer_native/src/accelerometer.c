@@ -189,7 +189,8 @@ static void create_file(const char* filename)
 /* dump sensor data to file */
 static void dump_data(int type, sensordata_s data[NUM_SAMPLES])
 {
-	char data_buf[64]; /* (Date, Time, Activity, Sensor, x, y, z) */
+	int offset = 0;
+	char data_buf[64 * NUM_SAMPLES]; /* (Date, Time, Activity, Sensor, x, y, z) */
 
 	// set time
 	time_t raw_time;
@@ -202,9 +203,15 @@ static void dump_data(int type, sensordata_s data[NUM_SAMPLES])
 
 	for (int i = 0; i < NUM_SAMPLES; i++) {
 		sensordata_s current_data = data[i];
-		sprintf(data_buf,"%d%s%d%s%d, %lld, %d, %d, %f, %f, %f\n", time_info->tm_year+1900, time_info->tm_mon<10? "0" : "", time_info->tm_mon+1, time_info->tm_mday<10? "0" : "",time_info->tm_mday, current_data.timestamp, current_data.activity, current_data.sensortype, current_data.x, current_data.y, current_data.z);
-		write_file(filename, data_buf);
+		sprintf(data_buf + offset,"%d%s%d%s%d, %lld, %d, %d, %f, %f, %f\n",
+                        time_info->tm_year+1900, time_info->tm_mon<10? "0" : "",
+                        time_info->tm_mon+1, time_info->tm_mday<10? "0" : "",
+                        time_info->tm_mday, current_data.timestamp,
+                        current_data.activity, current_data.sensortype,
+                        current_data.x, current_data.y, current_data.z);
+		offset = strlen(data_buf);
 	}
+	write_file(filename, data_buf);
 }
 
 static void turn_off_sensors(appdata_s* ad);
