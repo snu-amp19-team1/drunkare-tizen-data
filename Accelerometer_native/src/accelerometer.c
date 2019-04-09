@@ -283,7 +283,7 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
             all_finished &= ad->is_finished[i];
         }
 
-        // If all measurements are finished, turn off the sensors,
+        // If all measurements are finished, turn off the sensors
         // and re-enable the buttons
         if (all_finished) {
             turn_off_sensors(ad);
