@@ -160,7 +160,7 @@ char* concat(const char *s1, const char *s2)
 static void write_file(const char* filename, const char* buf)
 {
     FILE *fp;
-    fp = fopen(concat(filepath, filename), "w");
+    fp = fopen(concat(filepath, filename), "a");
     fputs(buf,fp);
     fclose(fp);
 }
@@ -171,9 +171,19 @@ static void read_file(const char* filename)
     FILE *fp;
     char buf[255];
     fp = fopen(concat(filepath, filename), "r");
-    fscanf(fp, "%s", buf);
-    dlog_print(DLOG_DEBUG, "file_read", buf);
+    while (fscanf(fp, "%s", buf) != EOF) {
+    	dlog_print(DLOG_DEBUG, "file_read", buf);
+    }
     fclose(fp);
+}
+
+/* create and initialize csv file */
+static void create_file(const char* filename)
+{
+	if(access(concat(filepath, filename), F_OK) == -1) {
+		// file doesn't exist
+		write_file(filename, "Date, Time, Activity, Sensor, x, y, z\n");
+	}
 }
 
 /* dump sensor data to file */
@@ -515,8 +525,8 @@ app_create(void *data)
 	filepath = app_get_data_path();
 	filename = "data.csv";
 
-	// [TODO] if file not exists
-	write_file(filename, "Date, Time, Activity, Sensor, x, y, z"); // initialize
+	// initialize file
+	create_file(filename);
 
 	return true;
 }
