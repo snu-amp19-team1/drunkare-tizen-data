@@ -266,6 +266,7 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 	data = &(ad->sensor_data[sensor_index][ad->iterator[sensor_index]++]);
 	data->index = ad->iterator[sensor_index];
 	data->sensortype = sensor_index;
+    data->activity = ad->activity;
 	data->timestamp = timestamp;
 	data->x = x;
 	data->y = y;
