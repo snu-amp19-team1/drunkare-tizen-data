@@ -12,7 +12,7 @@
 #define SAMPLING_RATE		40
 #define SAMPLES_PER_SECOND	(1000 / SAMPLING_RATE)
 #define SENSOR_DURATION		6 // sec
-#define NUM_ACTIVITIES		12
+#define NUM_ACTIVITIES		16
 #define NUM_SAMPLES			(SAMPLES_PER_SECOND * SENSOR_DURATION)
 #define TAG_LEN				3
 
@@ -29,10 +29,14 @@
 #define ACTIVITY_9		9
 #define ACTIVITY_10		10
 #define ACTIVITY_11		11
+#define ACTIVITY_12		12
+#define ACTIVITY_13		13
+#define ACTIVITY_14		14
+#define ACTIVITY_15		15
 
 // Define button size
 #define BTN_H		60
-#define BTN_W		80
+#define BTN_W		60
 
 typedef struct pos {
     int x;
@@ -41,37 +45,44 @@ typedef struct pos {
 
 // Define button location
 pos_t button_pos[] = {
-    [ACTIVITY_0]	= {40, 30},
-    [ACTIVITY_1]	= {140, 30},
-    [ACTIVITY_2]	= {240, 30},
-    [ACTIVITY_3]	= {40, 110},
-    [ACTIVITY_4]	= {140, 110},
-    [ACTIVITY_5]	= {240, 110},
-    [ACTIVITY_6]	= {40, 190},
-    [ACTIVITY_7]	= {140, 190},
-    [ACTIVITY_8]	= {240, 190},
-    [ACTIVITY_9]	= {40, 270},
-    [ACTIVITY_10]	= {140, 270},
-    [ACTIVITY_11]	= {240, 270}
+    [ACTIVITY_0]	= {24, 30},
+    [ACTIVITY_1]	= {108, 30},
+    [ACTIVITY_2]	= {192, 30},
+    [ACTIVITY_3]	= {276, 30},
+    [ACTIVITY_4]	= {24, 110},
+    [ACTIVITY_5]	= {108, 110},
+    [ACTIVITY_6]	= {192, 110},
+    [ACTIVITY_7]	= {276, 110},
+    [ACTIVITY_8]	= {24, 190},
+    [ACTIVITY_9]	= {108, 190},
+    [ACTIVITY_10]	= {192, 190},
+    [ACTIVITY_11]	= {276, 190},
+    [ACTIVITY_12]	= {24, 270},
+    [ACTIVITY_13]	= {108, 270},
+    [ACTIVITY_14]	= {192, 270},
+    [ACTIVITY_15]	= {276, 270}
 };
 
 #define BTN_X(a)	(button_pos[a].x)
 #define BTN_Y(a)	(button_pos[a].y)
 
 char btn_tag[][TAG_LEN] = {
-    // TODO: Replace with real activity tag
-    [ACTIVITY_0]	= "1",
-    [ACTIVITY_1]	= "2",
-    [ACTIVITY_2]	= "3",
-    [ACTIVITY_3]	= "4",
-    [ACTIVITY_4]	= "5",
-    [ACTIVITY_5]	= "6",
-    [ACTIVITY_6]	= "7",
-    [ACTIVITY_7]	= "8",
-    [ACTIVITY_8]	= "9",
-    [ACTIVITY_9]	= "10",
-    [ACTIVITY_10]	= "11",
-    [ACTIVITY_11]	= "12"
+    [ACTIVITY_0]	= "f",		// Face
+    [ACTIVITY_1]	= "p",		// Pour
+    [ACTIVITY_2]	= "h",		// Raise hand
+    [ACTIVITY_3]	= "ph",		// Use smartphone
+    [ACTIVITY_4]	= "jo",		// Jotting
+    [ACTIVITY_5]	= "cl",		// Clink
+    [ACTIVITY_6]	= "d1",		// Drink no handle
+    [ACTIVITY_7]	= "t",		// Tissue
+    [ACTIVITY_8]	= "d2",		// Drink with handle
+    [ACTIVITY_9]	= "sp",		// Spoon
+    [ACTIVITY_10]	= "cp",		// Chopstick
+    [ACTIVITY_11]	= "im",		// Pictue
+    [ACTIVITY_12]	= "fk",		// Fork
+    [ACTIVITY_13]	= "st",		// Stir
+    [ACTIVITY_14]	= "ky",		// Keyboard
+    [ACTIVITY_15]	= "ms"		// Mouse
 };
 
 // Convert activity number to button object pointer
@@ -118,6 +129,10 @@ static void btn_cb8(void *data, Evas_Object *obj, void *event_info);
 static void btn_cb9(void *data, Evas_Object *obj, void *event_info);
 static void btn_cb10(void *data, Evas_Object *obj, void *event_info);
 static void btn_cb11(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb12(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb13(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb14(void *data, Evas_Object *obj, void *event_info);
+static void btn_cb15(void *data, Evas_Object *obj, void *event_info);
 
 typedef void* (*btn_cb_t)(void*, Evas_Object*, void*);
 
@@ -133,7 +148,11 @@ btn_cb_t btn_cb[] = {
     [ACTIVITY_8]	= &btn_cb8,
     [ACTIVITY_9]	= &btn_cb9,
     [ACTIVITY_10]	= &btn_cb10,
-    [ACTIVITY_11]	= &btn_cb11
+    [ACTIVITY_11]	= &btn_cb11,
+    [ACTIVITY_12]	= &btn_cb12,
+    [ACTIVITY_13]	= &btn_cb13,
+    [ACTIVITY_14]	= &btn_cb14,
+    [ACTIVITY_15]	= &btn_cb15
 };
 
 
@@ -441,6 +460,26 @@ static void btn_cb10(void *data, Evas_Object *obj, void *event_info) {
 static void btn_cb11(void *data, Evas_Object *obj, void *event_info) {
     appdata_s *ad = (appdata_s*) data;
     ad->activity = ACTIVITY_11;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb12(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_12;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb13(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_13;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb14(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_14;
+    btn_clicked_cb(data, obj, event_info);
+}
+static void btn_cb15(void *data, Evas_Object *obj, void *event_info) {
+    appdata_s *ad = (appdata_s*) data;
+    ad->activity = ACTIVITY_15;
     btn_clicked_cb(data, obj, event_info);
 }
 
