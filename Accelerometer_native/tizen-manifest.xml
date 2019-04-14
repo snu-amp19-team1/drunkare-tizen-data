@@ -10,4 +10,8 @@
         <privilege>http://tizen.org/privilege/externalstorage.appdata</privilege>
         <privilege>http://tizen.org/privilege/power</privilege>
     </privileges>
+    <feature name="http://tizen.org/feature/sensor.accelerometer">true</feature>
+    <feature name="http://tizen.org/feature/sensor.accelerometer.wakeup">true</feature>
+    <feature name="http://tizen.org/feature/sensor.gyroscope">true</feature>
+    <feature name="http://tizen.org/feature/sensor.gyroscope.wakeup">true</feature>
 </manifest>

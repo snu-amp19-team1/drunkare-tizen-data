@@ -4,12 +4,13 @@
 #include "dlog.h"
 #include <Elementary.h>
 #include <device/power.h>
+#include <efl_util.h>
 
 #define NUM_SENSORS			2
 #define ACCELEROMETER		0
 #define GYROSCOPE			1
 #define MILLION				1000000
-#define SAMPLING_RATE		40
+#define SAMPLING_RATE		10
 #define SAMPLES_PER_SECOND	(1000 / SAMPLING_RATE)
 #define SENSOR_DURATION		6 // sec
 #define NUM_ACTIVITIES		16
@@ -98,7 +99,7 @@ typedef struct sensordata {
 	int index;						/* index of sensor_data array */
 	int sensortype;					/* 0 : ACCELEROMETER , 1 : GYROSCOPE */
 	int activity;					/* (not decided) */
-	unsigned long long timestamp;	/* timestamp */
+	unsigned long long timestamp;	/* timestamp in ms */
 	float x, y, z;					/* data */
 } sensordata_s;
 
@@ -110,7 +111,8 @@ typedef struct appdata {
 	Evas_Object *buttons[NUM_ACTIVITIES];
 	char *state;
 	sensordata_s sensor_data[NUM_SENSORS][NUM_SAMPLES];
-    int activity; // FIXME
+	unsigned long long initial_timestamp;
+	int activity; // FIXME
 	int iterator[NUM_SENSORS];
 	bool is_finished[NUM_SENSORS]; // set if measurement is finished
 } appdata_s;
@@ -285,8 +287,11 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 	data = &(ad->sensor_data[sensor_index][ad->iterator[sensor_index]++]);
 	data->index = ad->iterator[sensor_index];
 	data->sensortype = sensor_index;
-    data->activity = ad->activity;
-	data->timestamp = timestamp;
+	data->activity = ad->activity;
+        if (!ad->initial_timestamp) {
+		ad->initial_timestamp = timestamp;
+        }
+	data->timestamp = (timestamp - ad->initial_timestamp) / 1000;
 	data->x = x;
 	data->y = y;
 	data->z = z;
@@ -307,6 +312,8 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
         if (all_finished) {
             turn_off_sensors(ad);
             enable_buttons(ad);
+            ad->initial_timestamp = 0;
+            efl_util_set_window_screen_mode(ad->win, EFL_UTIL_SCREEN_MODE_DEFAULT);
         }
 
         // dump sensor data to file
@@ -395,6 +402,8 @@ static void btn_clicked_cb(void *data, Evas_Object *obj, void *event_info) {
 	appdata_s *ad = data;
 
     dlog_print(DLOG_DEBUG, "activity", "%d", ad->activity);
+
+    efl_util_set_window_screen_mode(ad->win, EFL_UTIL_SCREEN_MODE_ALWAYS_ON);
 
 	if(strcmp(ad->state, "off") == 0) {
 		turn_on_sensors(ad);
@@ -555,6 +564,8 @@ create_base_gui(appdata_s *ad)
 
 	// default state
 	ad->state = "off";
+
+        ad->initial_timestamp = 0;
 
 	/* Show window after base gui is set up */
 	evas_object_show(ad->win);
