@@ -203,15 +203,21 @@ static void create_file(const char* filename)
 {
 	if(access(concat(filepath, filename), F_OK) == -1) {
 		// file doesn't exist
-		write_file(filename, "Date, Time, Activity, Sensor, x, y, z\n");
+		write_file(filename, "/***=== line 0-2: accelerometer, line 4-6: gyroscope ===***/\n");
 	}
 }
 
+#define WRITE_BUF(i, buf, fmt, ...)                                            \
+  do {                                                                         \
+    sprintf(buf + i, fmt, ##__VA_ARGS__);                                      \
+    i = strlen(buf);                                                           \
+  } while (0);
+
 /* dump sensor data to file */
-static void dump_data(int type, sensordata_s data[NUM_SAMPLES])
+static void dump_data(appdata_s* ad)
 {
 	int offset = 0;
-	char data_buf[64 * NUM_SAMPLES]; /* (Date, Time, Activity, Sensor, x, y, z) */
+	char data_buf[NUM_SAMPLES << 7]; /* (Date, Time, Activity, Sensor, x, y, z) */
 
 	// set time
 	time_t raw_time;
@@ -219,19 +225,54 @@ static void dump_data(int type, sensordata_s data[NUM_SAMPLES])
 	time(&raw_time);
 	time_info = localtime(&raw_time);
 
-	// write sensor data
-	// (20190408, 147942607, 0, 0, 1.000000, 1.000000, 1.000000)
+    sensordata_s* accel = ad->sensor_data[0];
+    sensordata_s* gyro = ad->sensor_data[1];
 
-	for (int i = 0; i < NUM_SAMPLES; i++) {
-		sensordata_s current_data = data[i];
-		sprintf(data_buf + offset,"%d%s%d%s%d, %lld, %d, %d, %f, %f, %f\n",
-                        time_info->tm_year+1900, time_info->tm_mon<10? "0" : "",
-                        time_info->tm_mon+1, time_info->tm_mday<10? "0" : "",
-                        time_info->tm_mday, current_data.timestamp,
-                        current_data.activity, current_data.sensortype,
-                        current_data.x, current_data.y, current_data.z);
-		offset = strlen(data_buf);
-	}
+    unsigned long long accel_elapsed = accel[NUM_SAMPLES - 1].timestamp - accel[0].timestamp;
+    unsigned long long gyro_elapsed = gyro[NUM_SAMPLES - 1].timestamp - gyro[0].timestamp;
+
+	// Print header
+    WRITE_BUF(offset, data_buf,
+              "=== Date: %d/%d/%d, elapsed time: %lldms,%lldms ===\n",
+              time_info->tm_year + 1900, time_info->tm_mon + 1,
+              time_info->tm_mday, accel_elapsed, gyro_elapsed);
+
+    // Print accel x
+    for (int j = 0; j < NUM_SAMPLES; j++) {
+        WRITE_BUF(offset, data_buf, "%f,", accel[j].x);
+    }
+	WRITE_BUF(offset, data_buf, "\n");
+
+    // Print accel y
+    for (int j = 0; j < NUM_SAMPLES; j++) {
+        WRITE_BUF(offset, data_buf, "%f,", accel[j].y);
+    }
+	WRITE_BUF(offset, data_buf, "\n");
+
+    // Print accel z
+    for (int j = 0; j < NUM_SAMPLES; j++) {
+        WRITE_BUF(offset, data_buf, "%f,", accel[j].z);
+    }
+	WRITE_BUF(offset, data_buf, "\n");
+
+    // Print gyro x
+    for (int j = 0; j < NUM_SAMPLES; j++) {
+        WRITE_BUF(offset, data_buf, "%f,", gyro[j].x);
+    }
+	WRITE_BUF(offset, data_buf, "\n");
+
+    // Print gyro y
+    for (int j = 0; j < NUM_SAMPLES; j++) {
+        WRITE_BUF(offset, data_buf, "%f,", gyro[j].y);
+    }
+	WRITE_BUF(offset, data_buf, "\n");
+
+    // Print gyro z
+    for (int j = 0; j < NUM_SAMPLES; j++) {
+        WRITE_BUF(offset, data_buf, "%f,", gyro[j].z);
+    }
+	WRITE_BUF(offset, data_buf, "\n");
+
 	write_file(filename, data_buf);
 }
 
@@ -288,10 +329,10 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
 	data->index = ad->iterator[sensor_index];
 	data->sensortype = sensor_index;
 	data->activity = ad->activity;
-        if (!ad->initial_timestamp) {
+	if (!ad->initial_timestamp) {
 		ad->initial_timestamp = timestamp;
-        }
-	data->timestamp = (timestamp - ad->initial_timestamp) / 1000;
+	}
+    data->timestamp = (timestamp - ad->initial_timestamp) / 1000;
 	data->x = x;
 	data->y = y;
 	data->z = z;
@@ -311,16 +352,11 @@ void sensor_callback(sensor_h sensor, sensor_event_s *event, void *user_data) {
         // and re-enable the buttons
         if (all_finished) {
             turn_off_sensors(ad);
+            dump_data(ad);
             enable_buttons(ad);
             ad->initial_timestamp = 0;
             efl_util_set_window_screen_mode(ad->win, EFL_UTIL_SCREEN_MODE_DEFAULT);
         }
-
-        // dump sensor data to file
-        dump_data(sensor_index, ad->sensor_data[sensor_index]);
-
-        // read file for test
-        read_file(filename);
 
         // Check the difference between the timestamp of the last
         // measurement and the first measurement
