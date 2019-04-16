@@ -203,7 +203,7 @@ static void create_file(const char* filename)
 {
 	if(access(concat(filepath, filename), F_OK) == -1) {
 		// file doesn't exist
-		write_file(filename, "/***=== line 0-2: accelerometer, line 4-6: gyroscope ===***/\n");
+		write_file(filename, "date,accel_elapsed,gyro_elapsed,label,data\n");
 	}
 }
 
@@ -233,9 +233,9 @@ static void dump_data(appdata_s* ad)
 
 	// Print header
     WRITE_BUF(offset, data_buf,
-              "=== Date: %d/%d/%d, elapsed time: %lldms,%lldms ===\n",
+              "%d/%d/%d,%lld,%lld,%d\n",
               time_info->tm_year + 1900, time_info->tm_mon + 1,
-              time_info->tm_mday, accel_elapsed, gyro_elapsed);
+              time_info->tm_mday, accel_elapsed, gyro_elapsed, ad->activity);
 
     // Print accel x
     for (int j = 0; j < NUM_SAMPLES; j++) {
