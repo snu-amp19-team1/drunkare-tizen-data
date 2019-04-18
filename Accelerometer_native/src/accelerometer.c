@@ -233,7 +233,7 @@ static void dump_data(appdata_s* ad)
 
 	// Print header
     WRITE_BUF(offset, data_buf,
-              "%d/%d/%d,%lld,%lld,%d\n",
+              "%d/%d/%d,%lld,%lld,%d,",
               time_info->tm_year + 1900, time_info->tm_mon + 1,
               time_info->tm_mday, accel_elapsed, gyro_elapsed, ad->activity);
 
@@ -241,37 +241,33 @@ static void dump_data(appdata_s* ad)
     for (int j = 0; j < NUM_SAMPLES; j++) {
         WRITE_BUF(offset, data_buf, "%f,", accel[j].x);
     }
-	WRITE_BUF(offset, data_buf, "\n");
 
     // Print accel y
     for (int j = 0; j < NUM_SAMPLES; j++) {
         WRITE_BUF(offset, data_buf, "%f,", accel[j].y);
     }
-	WRITE_BUF(offset, data_buf, "\n");
 
     // Print accel z
     for (int j = 0; j < NUM_SAMPLES; j++) {
         WRITE_BUF(offset, data_buf, "%f,", accel[j].z);
     }
-	WRITE_BUF(offset, data_buf, "\n");
 
     // Print gyro x
     for (int j = 0; j < NUM_SAMPLES; j++) {
         WRITE_BUF(offset, data_buf, "%f,", gyro[j].x);
     }
-	WRITE_BUF(offset, data_buf, "\n");
 
     // Print gyro y
     for (int j = 0; j < NUM_SAMPLES; j++) {
         WRITE_BUF(offset, data_buf, "%f,", gyro[j].y);
     }
-	WRITE_BUF(offset, data_buf, "\n");
 
     // Print gyro z
     for (int j = 0; j < NUM_SAMPLES; j++) {
         WRITE_BUF(offset, data_buf, "%f,", gyro[j].z);
     }
-	WRITE_BUF(offset, data_buf, "\n");
+
+    data_buf[offset - 1] = '\n';
 
 	write_file(filename, data_buf);
 }
