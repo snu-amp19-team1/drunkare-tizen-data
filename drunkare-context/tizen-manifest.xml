@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<manifest xmlns="http://tizen.org/ns/packages" api-version="4.0" package="com.drunkare.context" version="1.0.0">
+    <profile name="wearable"/>
+    <ui-application appid="com.drunkare.context" exec="drunkare_context" multiple="false" nodisplay="false" taskmanage="true" type="capp">
+        <label>drunkare_context</label>
+        <icon>drunkare_context.png</icon>
+    </ui-application>
+    <privileges>
+        <privilege>http://tizen.org/privilege/display</privilege>
+        <privilege>http://tizen.org/privilege/externalstorage.appdata</privilege>
+        <privilege>http://tizen.org/privilege/power</privilege>
+    </privileges>
+</manifest>
